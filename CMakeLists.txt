@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 3.28)
+project(vfighter)
+
+find_package(ECM REQUIRED NO_MODULE)
+set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
+
+find_package(Wayland REQUIRED COMPONENTS Client Cursor)
+find_package(WaylandProtocols REQUIRED)
+find_package(WaylandScanner REQUIRED)
+
+add_executable(vfighter Display.cpp main.cpp MemFd.cpp Pointer.cpp Seat.cpp Window.cpp)
+ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
+ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/viewporter/viewporter.xml BASENAME viewporter)
+ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
+ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
+set_target_properties(vfighter PROPERTIES CXX_STANDARD 23)
+target_include_directories(vfighter PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(vfighter Wayland::Client Wayland::Cursor)
