@@ -1,6 +1,5 @@
 #pragma once
 
-#include "MemFd.hpp"
 #include "WaylandPointer.hpp"
 
 class Display;
@@ -19,12 +18,7 @@ public:
     bool should_close() const noexcept;
 
 private:
-    MemFd _shm_file;
-
-    WaylandPointer<wl_shm_pool> _shm_pool;
-    WaylandPointer<wl_buffer> _buffer;
     WaylandPointer<wl_surface> _surface;
-    WaylandPointer<wp_viewport> _viewport;
     WaylandPointer<xdg_surface> _wm_surface;
     WaylandPointer<xdg_toplevel> _toplevel;
 

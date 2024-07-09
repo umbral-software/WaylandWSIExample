@@ -10,7 +10,6 @@ static constexpr uint32_t DESIRED_WL_COMPOSITOR_VERSION = 4;
 static constexpr uint32_t DESIRED_WL_SEAT_VERSION = 5;
 static constexpr uint32_t DESIRED_WL_SHM_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CONTENT_TYPE_V1_VERSION = 1;
-static constexpr uint32_t DESIRED_WP_VIEWPORTER_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_DECORATION_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_SHELL_VERSION = 2;
 
@@ -43,11 +42,6 @@ Display::Display() {
             {
                 self._shm.reset(static_cast<wl_shm *>(wl_registry_bind(registry, name, &wl_shm_interface, DESIRED_WL_SHM_VERSION)));
             }
-            else if (!strcmp(wp_viewporter_interface.name, interface)
-                && version >= DESIRED_WP_VIEWPORTER_VERSION)
-            {
-                self._viewporter.reset(static_cast<wp_viewporter *>(wl_registry_bind(registry, name, &wp_viewporter_interface, DESIRED_WP_VIEWPORTER_VERSION)));
-            }
             else if (!strcmp(xdg_wm_base_interface.name, interface)
                 && version >= DESIRED_XDG_SHELL_VERSION)
             {
@@ -69,7 +63,6 @@ Display::Display() {
             
             if (name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._compositor.get()))
                 || name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._shm.get()))
-                || name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._viewporter.get()))
                 || name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._wm_base.get()))
                 || (self._content_type_manager && name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._content_type_manager.get())))
                 || (self._decoration_manager && name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._decoration_manager.get()))))

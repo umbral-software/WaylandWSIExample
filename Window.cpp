@@ -6,12 +6,9 @@
 
 static constexpr int32_t DEFAULT_HEIGHT = 600;
 static constexpr int32_t DEFAULT_WIDTH = 800;
-static constexpr size_t PIXEL_SIZE_BYTES = 4;
 static constexpr char WINDOW_TITLE[] = "vfighter";
 
-Window::Window(Display& display)
-    :_shm_file("shm_file", PIXEL_SIZE_BYTES)
-{
+Window::Window(Display& display) {
     static constexpr wl_surface_listener surface_listener {
         .enter = [](void *, wl_surface *, wl_output *) noexcept {
             
@@ -36,12 +33,8 @@ Window::Window(Display& display)
     };
 
     static constexpr xdg_toplevel_listener toplevel_listener {
-        .configure = [](void *data, xdg_toplevel *, int32_t width, int32_t height, wl_array *) noexcept {
-            auto& self = *static_cast<Window*>(data);
-            
-            if (width != 0 && height != 0) {
-                wp_viewport_set_destination(self._viewport.get(), width, height);
-            }
+        .configure = [](void *, xdg_toplevel *, int32_t, int32_t, wl_array *) noexcept {
+
         },
         .close = [](void *data, xdg_toplevel *) noexcept {
             auto& self = *static_cast<Window*>(data);
@@ -72,15 +65,8 @@ Window::Window(Display& display)
         }
     };
 
-    _shm_pool.reset(wl_shm_create_pool(display._shm.get(), _shm_file.fd(), static_cast<int32_t>(_shm_file.size())));
-    _buffer.reset(wl_shm_pool_create_buffer(_shm_pool.get(), 0, 1, 1, PIXEL_SIZE_BYTES, WL_SHM_FORMAT_ARGB8888));
-
     _surface.reset(wl_compositor_create_surface(display._compositor.get()));
     wl_surface_add_listener(_surface.get(), &surface_listener, this);
-    wl_surface_attach(_surface.get(), _buffer.get(), 0, 0);
-
-    _viewport.reset(wp_viewporter_get_viewport(display._viewporter.get(), _surface.get()));
-    wp_viewport_set_destination(_viewport.get(), DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
     _wm_surface.reset(xdg_wm_base_get_xdg_surface(display._wm_base.get(), _surface.get()));
     xdg_surface_add_listener(_wm_surface.get(), &wm_surface_listener, this);
@@ -107,10 +93,6 @@ Window::Window(Display& display)
 }
 
 void Window::render() {
-    memset(_shm_file.map(), 0xFF, _shm_file.size());
-
-    wl_surface_attach(_surface.get(), _buffer.get(), 0, 0);
-    wl_surface_damage_buffer(_surface.get(), 0, 0, 1, 1);
     wl_surface_commit(_surface.get());
 }
 

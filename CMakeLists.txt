@@ -8,7 +8,7 @@ find_package(Wayland REQUIRED COMPONENTS Client Cursor)
 find_package(WaylandProtocols REQUIRED)
 find_package(WaylandScanner REQUIRED)
 
-add_executable(vfighter Display.cpp main.cpp MemFd.cpp Pointer.cpp Seat.cpp Window.cpp)
+add_executable(vfighter Display.cpp Keyboard.cpp main.cpp MappableFd.cpp Pointer.cpp Seat.cpp Window.cpp)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/viewporter/viewporter.xml BASENAME viewporter)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)

@@ -5,8 +5,8 @@
 
 static constexpr char DEFAULT_CURSOR_NAME[] = "default";
 
-Pointer::Pointer(Seat& seat, wl_pointer* pointer)
-    :_seat(seat), _pointer(pointer)
+Pointer::Pointer(Seat& seat)
+    :_seat(seat)
 {
     static constexpr wl_pointer_listener pointer_listener {
         .enter = [](void *data, wl_pointer *, uint32_t serial, wl_surface *, wl_fixed_t, wl_fixed_t){
@@ -26,6 +26,7 @@ Pointer::Pointer(Seat& seat, wl_pointer* pointer)
         .axis_relative_direction = [](void *, wl_pointer *, uint32_t, uint32_t){},
     };
 
+    _pointer.reset(wl_seat_get_pointer(_seat._seat.get()));
     wl_pointer_add_listener(_pointer.get(), &pointer_listener, this);
 
     const auto& cursor = *wl_cursor_theme_get_cursor(_seat._display._cursor_theme.get(), DEFAULT_CURSOR_NAME);

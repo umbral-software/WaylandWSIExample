@@ -27,7 +27,6 @@ private:
 
     WaylandPointer<wl_compositor> _compositor;
     WaylandPointer<wl_shm> _shm;
-    WaylandPointer<wp_viewporter> _viewporter;
     WaylandPointer<xdg_wm_base> _wm_base;
 
     std::forward_list<Seat> _seats;

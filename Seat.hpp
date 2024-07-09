@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Keyboard.hpp"
 #include "Pointer.hpp"
 
 #include <optional>
@@ -7,6 +8,7 @@
 class Display;
 
 class Seat {
+    friend class Keyboard;
     friend class Pointer;
 public:
     Seat(Display& display, wl_seat *seat);
@@ -20,7 +22,7 @@ public:
 private:
     Display& _display;
     WaylandPointer<wl_seat> _seat;
-    WaylandPointer<wl_keyboard> _keyboard;
 
+    std::optional<Keyboard> _keyboard;
     std::optional<Pointer> _pointer;
 };

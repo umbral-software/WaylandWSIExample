@@ -7,6 +7,6 @@ int main() {
 
     while (!window.should_close()) {
         display.poll_events();
-        //window.render();
+        window.render();
     }
 }

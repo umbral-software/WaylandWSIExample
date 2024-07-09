@@ -6,7 +6,7 @@ class Seat;
 
 class Pointer {
 public:
-    Pointer(Seat& seat, wl_pointer *pointer);
+    explicit Pointer(Seat& seat);
     Pointer(const Pointer&) = delete;
     Pointer(Pointer&&) noexcept = delete;
     ~Pointer() = default;
