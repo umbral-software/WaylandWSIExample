@@ -8,7 +8,9 @@ static constexpr int32_t DEFAULT_HEIGHT = 600;
 static constexpr int32_t DEFAULT_WIDTH = 800;
 static constexpr char WINDOW_TITLE[] = "vfighter";
 
-Window::Window(Display& display) {
+Window::Window(Display& display)
+    :_display(display)
+{
     static constexpr wl_surface_listener surface_listener {
         .enter = [](void *, wl_surface *, wl_output *) noexcept {
             
@@ -65,10 +67,10 @@ Window::Window(Display& display) {
         }
     };
 
-    _surface.reset(wl_compositor_create_surface(display._compositor.get()));
+    _surface.reset(wl_compositor_create_surface(_display._compositor.get()));
     wl_surface_add_listener(_surface.get(), &surface_listener, this);
 
-    _wm_surface.reset(xdg_wm_base_get_xdg_surface(display._wm_base.get(), _surface.get()));
+    _wm_surface.reset(xdg_wm_base_get_xdg_surface(_display._wm_base.get(), _surface.get()));
     xdg_surface_add_listener(_wm_surface.get(), &wm_surface_listener, this);
 
     _toplevel.reset(xdg_surface_get_toplevel(_wm_surface.get()));
@@ -76,12 +78,12 @@ Window::Window(Display& display) {
     xdg_toplevel_set_min_size(_toplevel.get(), DEFAULT_WIDTH, DEFAULT_HEIGHT);
     xdg_toplevel_set_title(_toplevel.get(), WINDOW_TITLE);
 
-    if (display._content_type_manager) {
+    if (_display._content_type_manager) {
         _content_type.reset(wp_content_type_manager_v1_get_surface_content_type(display._content_type_manager.get(), _surface.get()));
         wp_content_type_v1_set_content_type(_content_type.get(), WP_CONTENT_TYPE_V1_TYPE_GAME);
     }
 
-    if (display._decoration_manager) {
+    if (_display._decoration_manager) {
         _toplevel_decoration.reset(zxdg_decoration_manager_v1_get_toplevel_decoration(display._decoration_manager.get(), _toplevel.get()));
         zxdg_toplevel_decoration_v1_add_listener(_toplevel_decoration.get(), &toplevel_decoration_listener, this);
         zxdg_toplevel_decoration_v1_set_mode(_toplevel_decoration.get(), ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
@@ -92,9 +94,14 @@ Window::Window(Display& display) {
     wl_surface_commit(_surface.get());
 }
 
-void Window::render() {
-    wl_surface_commit(_surface.get());
+wl_display *Window::display() noexcept {
+    return _display._display.get();
 }
+
+wl_surface *Window::surface() noexcept {
+    return _surface.get();
+}
+
 
 bool Window::should_close() const noexcept {
     return _closed;

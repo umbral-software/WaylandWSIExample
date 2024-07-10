@@ -14,10 +14,13 @@ public:
     Window& operator=(const Window&) = delete;
     Window& operator=(Window&&) noexcept = delete;
 
-    void render();
+    wl_display *display() noexcept;
+    wl_surface *surface() noexcept;
     bool should_close() const noexcept;
 
 private:
+    Display& _display;
+
     WaylandPointer<wl_surface> _surface;
     WaylandPointer<xdg_surface> _wm_surface;
     WaylandPointer<xdg_toplevel> _toplevel;
