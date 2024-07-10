@@ -6,7 +6,7 @@
 static constexpr char DEFAULT_CURSOR_NAME[] = "default";
 
 Pointer::Pointer(Seat& seat)
-    :_seat(seat)
+    :_display(seat._display)
 {
     static constexpr wl_pointer_listener pointer_listener {
         .enter = [](void *data, wl_pointer *, uint32_t serial, wl_surface *, wl_fixed_t, wl_fixed_t){
@@ -26,13 +26,13 @@ Pointer::Pointer(Seat& seat)
         .axis_relative_direction = [](void *, wl_pointer *, uint32_t, uint32_t){},
     };
 
-    _pointer.reset(wl_seat_get_pointer(_seat._seat.get()));
+    _pointer.reset(wl_seat_get_pointer(seat._seat.get()));
     wl_pointer_add_listener(_pointer.get(), &pointer_listener, this);
 
-    const auto& cursor = *wl_cursor_theme_get_cursor(_seat._display._cursor_theme.get(), DEFAULT_CURSOR_NAME);
+    const auto& cursor = *wl_cursor_theme_get_cursor(_display._cursor_theme.get(), DEFAULT_CURSOR_NAME);
 
     _cursor_image = cursor.images[0];
-    _cursor_surface.reset(wl_compositor_create_surface(_seat._display._compositor.get()));
+    _cursor_surface.reset(wl_compositor_create_surface(_display._compositor.get()));
     wl_surface_attach(_cursor_surface.get(), wl_cursor_image_get_buffer(_cursor_image), 0, 0);
     wl_surface_commit(_cursor_surface.get());
 }

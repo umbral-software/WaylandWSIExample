@@ -2,6 +2,7 @@
 
 #include "WaylandPointer.hpp"
 
+class Display;
 class Seat;
 
 class Pointer {
@@ -15,7 +16,7 @@ public:
     Pointer& operator=(Pointer&&) noexcept = delete;
 
 private:
-    Seat& _seat;
+    Display& _display;
 
     WaylandPointer<wl_pointer> _pointer;
     
