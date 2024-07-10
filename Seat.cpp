@@ -1,6 +1,5 @@
 #include "Seat.hpp"
 
-
 Seat::Seat(Display& display, wl_seat *seat)
     :_display(display), _seat(seat)
 {
