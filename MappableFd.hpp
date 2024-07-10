@@ -6,7 +6,6 @@
 
 class MappableFd {
 public:
-    MappableFd();
     MappableFd(int fd, size_t size);
     MappableFd(const MappableFd&) = delete;
     MappableFd(MappableFd&& other) noexcept;

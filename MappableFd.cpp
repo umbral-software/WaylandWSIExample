@@ -6,12 +6,6 @@
 
 static constexpr int BAD_FD = -1;
 
-MappableFd::MappableFd() {
-    _size = 0;
-    _fd = -1;
-    _mapping = nullptr;
-}
-
 MappableFd::MappableFd(int fd, size_t size)
 {
     _fd = fd;
@@ -27,8 +21,8 @@ MappableFd::MappableFd(MappableFd&& other) noexcept {
     _size = other._size;
     _mapping = other._mapping;
 
-    other._size = 0;
     other._fd = BAD_FD;
+    other._size = 0;
     other._mapping = nullptr;
 }
 
