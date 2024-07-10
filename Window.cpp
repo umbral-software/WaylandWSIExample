@@ -4,8 +4,8 @@
 
 #include <cstring>
 
-static constexpr int32_t DEFAULT_HEIGHT = 600;
-static constexpr int32_t DEFAULT_WIDTH = 800;
+static constexpr uint32_t DEFAULT_HEIGHT = 600;
+static constexpr uint32_t DEFAULT_WIDTH = 800;
 static constexpr char WINDOW_TITLE[] = "vfighter";
 
 Window::Window(Display& display)
@@ -30,13 +30,18 @@ Window::Window(Display& display)
         .configure = [](void *data, xdg_surface *surface, uint32_t serial) noexcept {
             auto& self = *static_cast<Window *>(data);
             xdg_surface_ack_configure(surface, serial);
-            wl_surface_commit(self._surface.get());
+            self._actual_size = {
+                std::max(DEFAULT_WIDTH, self._desired_size.first),
+                std::max(DEFAULT_HEIGHT, self._desired_size.second)
+            };
         }
     };
 
     static constexpr xdg_toplevel_listener toplevel_listener {
-        .configure = [](void *, xdg_toplevel *, int32_t, int32_t, wl_array *) noexcept {
+        .configure = [](void *data, xdg_toplevel *, int32_t width, int32_t height, wl_array *) noexcept {
+            auto& self = *static_cast<Window*>(data);
 
+            self._desired_size = { width, height };
         },
         .close = [](void *data, xdg_toplevel *) noexcept {
             auto& self = *static_cast<Window*>(data);
@@ -91,18 +96,23 @@ Window::Window(Display& display)
         xdg_toplevel_set_fullscreen(_toplevel.get(), nullptr);
     }
 
-    wl_surface_commit(_surface.get());
+    _actual_size = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
+    _desired_size = {0, 0};
+    _closed = false;
 }
 
 wl_display *Window::display() noexcept {
     return _display._display.get();
 }
 
-wl_surface *Window::surface() noexcept {
-    return _surface.get();
-}
-
-
 bool Window::should_close() const noexcept {
     return _closed;
+}
+
+std::pair<uint32_t, uint32_t> Window::size() const noexcept {
+    return _actual_size;
+}
+
+wl_surface *Window::surface() noexcept {
+    return _surface.get();
 }

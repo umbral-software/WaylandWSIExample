@@ -15,8 +15,9 @@ public:
     Window& operator=(Window&&) noexcept = delete;
 
     wl_display *display() noexcept;
-    wl_surface *surface() noexcept;
     bool should_close() const noexcept;
+    std::pair<uint32_t, uint32_t> size() const noexcept;
+    wl_surface *surface() noexcept;
 
 private:
     Display& _display;
@@ -29,5 +30,6 @@ private:
     WaylandPointer<wp_content_type_v1> _content_type;
     WaylandPointer<zxdg_toplevel_decoration_v1> _toplevel_decoration;
 
-    bool _closed = false;
+    std::pair<uint32_t, uint32_t> _actual_size, _desired_size;
+    bool _closed;
 };

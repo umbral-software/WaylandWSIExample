@@ -4,6 +4,7 @@
 #include <volk.h>
 #include <vulkan/vk_enum_string_helper.h>
 
+#include <algorithm>
 #include <array>
 #include <vector>
 
@@ -35,12 +36,16 @@ protected:
     RendererBase& operator=(const RendererBase&) = delete;
     RendererBase& operator=(RendererBase&&) noexcept = delete;
 
+    VkResult wait_all_fences() const noexcept;
+
     struct {
         VkInstance instance;
         VkSurfaceKHR surface;
         
         VkPhysicalDevice physical_device;
         uint32_t queue_family_index;
+
+        VkSurfaceFormatKHR surface_format;
 
         VkDevice device;
         VkQueue queue;
@@ -58,11 +63,7 @@ RendererBase::RendererBase()
 
 RendererBase::~RendererBase() {
     if (d.device) {
-        std::array<VkFence, NUM_FRAMES_IN_FLIGHT> all_fences;
-        for (size_t i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i) {
-            all_fences[i] = d.frame_data[i].fence;
-        }
-        vkWaitForFences(d.device, all_fences.size(), all_fences.data(), true, UINT64_MAX);
+        wait_all_fences();
 
         for (const auto& image_data : d.image_data) {
             vkDestroySemaphore(d.device, image_data.semaphore, nullptr);   
@@ -82,6 +83,14 @@ RendererBase::~RendererBase() {
     }
 }
 
+VkResult RendererBase::wait_all_fences() const noexcept {
+    std::array<VkFence, NUM_FRAMES_IN_FLIGHT> all_fences;
+    for (size_t i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i) {
+        all_fences[i] = d.frame_data[i].fence;
+    }
+    return vkWaitForFences(d.device, all_fences.size(), all_fences.data(), true, UINT64_MAX);
+}
+
 class Renderer : private RendererBase {
 public:
     Renderer(Window& window);
@@ -91,8 +100,14 @@ public:
     void render();
 
 private:
+    void rebuild_swapchain();
+
+private:
     const Window& _window;
+    
     size_t _frame_index;
+    
+    std::pair<uint32_t, uint32_t> _swapchain_size;
     uint32_t _image_index;
 };
 
@@ -129,6 +144,13 @@ Renderer::Renderer(Window& window)
     
     std::tie(d.physical_device, d.queue_family_index) = std::make_pair(physical_devices[0], 0); // FIXME
 
+    uint32_t num_formats;
+    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(d.physical_device, d.surface, &num_formats, nullptr));
+    const auto surface_formats = std::make_unique_for_overwrite<VkSurfaceFormatKHR[]>(num_formats);
+    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(d.physical_device, d.surface, &num_formats, surface_formats.get()));
+
+    d.surface_format = surface_formats[0]; // FIXME
+
     const std::array device_extensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
     const float queue_priority = 1.0f;
     const VkDeviceQueueCreateInfo queue_create_info {
@@ -149,53 +171,21 @@ Renderer::Renderer(Window& window)
 
     vkGetDeviceQueue(d.device, d.queue_family_index, 0, &d.queue);
 
-    const VkSemaphoreCreateInfo semaphore_create_info {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
-    };
-
     for (auto& frame_data : d.frame_data) {
         const VkFenceCreateInfo signalled_fence_create_info {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .flags = VK_FENCE_CREATE_SIGNALED_BIT
         };
         check_success(vkCreateFence(d.device, &signalled_fence_create_info, nullptr, &frame_data.fence));
+
+        const VkSemaphoreCreateInfo semaphore_create_info {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+        };
         check_success(vkCreateSemaphore(d.device, &semaphore_create_info, nullptr, &frame_data.semaphore));
     }
     _frame_index = d.frame_data.size();
 
-    VkSurfaceCapabilitiesKHR surface_caps;
-    check_success(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(d.physical_device, d.surface, &surface_caps));
-
-    uint32_t num_formats;
-    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(d.physical_device, d.surface, &num_formats, nullptr));
-    const auto surface_formats = std::make_unique_for_overwrite<VkSurfaceFormatKHR[]>(num_formats);
-    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(d.physical_device, d.surface, &num_formats, surface_formats.get()));
-
-    const VkSwapchainCreateInfoKHR swapchain_create_info {
-        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .surface = d.surface,
-        .minImageCount = surface_caps.minImageCount, // FIXME
-        .imageFormat = surface_formats[0].format, // FIXME
-        .imageColorSpace = surface_formats[0].colorSpace, // FIXME
-        .imageExtent = { 800, 600 }, // FIXME
-        .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .preTransform = surface_caps.currentTransform,
-        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // FIXME
-        .presentMode = VK_PRESENT_MODE_FIFO_KHR, // FIFO is always suppported
-        .clipped = true
-    };
-    check_success(vkCreateSwapchainKHR(d.device, &swapchain_create_info, nullptr, &d.swapchain));
-
-    uint32_t num_images;
-    check_success(vkGetSwapchainImagesKHR(d.device, d.swapchain, &num_images, nullptr));
-    const auto images = std::make_unique_for_overwrite<VkImage[]>(num_images);
-    check_success(vkGetSwapchainImagesKHR(d.device, d.swapchain, &num_images, images.get()));
-
-    d.image_data.resize(num_images);
-    for (auto& image_data : d.image_data) {
-        check_success(vkCreateSemaphore(d.device, &semaphore_create_info, nullptr, &image_data.semaphore));
-    }
+    rebuild_swapchain();
 }
 
 FrameData& Renderer::frame() noexcept {
@@ -208,31 +198,113 @@ ImageData& Renderer::image() noexcept {
 
 void Renderer::render() {
     _frame_index = (_frame_index + 1) % d.frame_data.size();
-
     check_success(vkWaitForFences(d.device, 1, &frame().fence, true, UINT64_MAX));
-    check_success(vkAcquireNextImageKHR(d.device, d.swapchain, UINT64_MAX, frame().semaphore, nullptr, &_image_index));
+    const auto acquire_result = vkAcquireNextImageKHR(d.device, d.swapchain, UINT64_MAX, frame().semaphore, nullptr, &_image_index);
 
-    const VkPipelineStageFlags wait_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    const VkSubmitInfo submit_info {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &frame().semaphore,
-        .pWaitDstStageMask = &wait_stage_mask,
-        .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &image().semaphore
-    };
-    check_success(vkResetFences(d.device, 1, &frame().fence));
-    check_success(vkQueueSubmit(d.queue, 1, &submit_info, frame().fence));
+    bool swapchain_usable, rebuild_required;
+    switch (acquire_result) {
+    case VK_SUCCESS:
+        swapchain_usable = true;
+        rebuild_required = false;
+        break;
+    case VK_SUBOPTIMAL_KHR:
+        swapchain_usable = true;
+        rebuild_required = true;
+        break;
+    case VK_ERROR_OUT_OF_DATE_KHR:
+        swapchain_usable = false;
+        rebuild_required = true;
+        break;
+    default:
+        throw std::runtime_error(string_VkResult(acquire_result));
+    }
 
-    const VkPresentInfoKHR present_info {
-        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &image().semaphore,
-        .swapchainCount = 1,
-        .pSwapchains = &d.swapchain,
-        .pImageIndices = &_image_index
+    if (swapchain_usable) {
+        const VkPipelineStageFlags wait_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        const VkSubmitInfo submit_info {
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &frame().semaphore,
+            .pWaitDstStageMask = &wait_stage_mask,
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &image().semaphore
+        };
+        check_success(vkResetFences(d.device, 1, &frame().fence));
+        check_success(vkQueueSubmit(d.queue, 1, &submit_info, frame().fence));
+
+        const VkPresentInfoKHR present_info {
+            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &image().semaphore,
+            .swapchainCount = 1,
+            .pSwapchains = &d.swapchain,
+            .pImageIndices = &_image_index
+        };
+        const auto present_result = vkQueuePresentKHR(d.queue, &present_info);
+        switch (present_result) {
+        case VK_SUCCESS:
+            break;
+        case VK_SUBOPTIMAL_KHR:
+        case VK_ERROR_OUT_OF_DATE_KHR:
+            rebuild_required = true;
+            break;
+        default:
+            throw std::runtime_error(string_VkResult(present_result));
+        }
+    }
+
+    if (rebuild_required || _swapchain_size != _window.size()) {
+        rebuild_swapchain();
+    }
+}
+
+void Renderer::rebuild_swapchain() {
+    VkSurfaceCapabilitiesKHR surface_caps;
+    check_success(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(d.physical_device, d.surface, &surface_caps));
+
+    const auto window_size = _window.size();
+
+    _swapchain_size = {
+        std::clamp(window_size.first, surface_caps.minImageExtent.width, surface_caps.maxImageExtent.width),
+        std::clamp(window_size.second, surface_caps.minImageExtent.height, surface_caps.maxImageExtent.height),
     };
-    check_success(vkQueuePresentKHR(d.queue, &present_info)) ;
+
+    const VkSwapchainCreateInfoKHR swapchain_create_info {
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .surface = d.surface,
+        .minImageCount = surface_caps.minImageCount, // FIXME
+        .imageFormat = d.surface_format.format,
+        .imageColorSpace = d.surface_format.colorSpace,
+        .imageExtent = { _swapchain_size.first, _swapchain_size.second },
+        .imageArrayLayers = 1,
+        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .preTransform = surface_caps.currentTransform,
+        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // FIXME
+        .presentMode = VK_PRESENT_MODE_FIFO_KHR, // FIFO is always suppported
+        .clipped = true,
+        .oldSwapchain = d.swapchain
+    };
+    check_success(wait_all_fences());
+    check_success(vkCreateSwapchainKHR(d.device, &swapchain_create_info, nullptr, &d.swapchain));
+    vkDestroySwapchainKHR(d.device, swapchain_create_info.oldSwapchain, nullptr);
+
+    uint32_t num_images;
+    check_success(vkGetSwapchainImagesKHR(d.device, d.swapchain, &num_images, nullptr));
+    const auto images = std::make_unique_for_overwrite<VkImage[]>(num_images);
+    check_success(vkGetSwapchainImagesKHR(d.device, d.swapchain, &num_images, images.get()));
+
+    for (auto& image_data : d.image_data) {
+        vkDestroySemaphore(d.device, image_data.semaphore, nullptr);
+    }
+    d.image_data.clear();
+
+    d.image_data.resize(num_images);
+    for (auto& image_data : d.image_data) {
+        const VkSemaphoreCreateInfo semaphore_create_info {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+        };
+        check_success(vkCreateSemaphore(d.device, &semaphore_create_info, nullptr, &image_data.semaphore));
+    }
 }
 
 int main() {
