@@ -10,9 +10,6 @@ MappableFd::MappableFd(int fd, size_t size)
 {
     _fd = fd;
     _size = size;
-    ftruncate(_fd, static_cast<off_t>(_size));
-    fcntl(_fd, F_ADD_SEALS, F_SEAL_SEAL | F_SEAL_SHRINK );
-
     _mapping = mmap(nullptr, _size, PROT_WRITE, MAP_PRIVATE, _fd, 0);
 }
 
