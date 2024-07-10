@@ -1,12 +1,13 @@
 #pragma once
 
 #include "Seat.hpp"
-#include "WaylandPointer.hpp"
+#include "XkbPointer.hpp"
 
 #include <forward_list>
 
 class Seat;
 class Display {
+    friend class Keyboard;
     friend class Pointer;
     friend class Seat;
     friend class Window;
@@ -36,4 +37,5 @@ private:
     WaylandPointer<zxdg_decoration_manager_v1> _decoration_manager;
 
     WaylandPointer<wl_cursor_theme> _cursor_theme;
+    XkbPointer<xkb_context> _xkb_context;
 };

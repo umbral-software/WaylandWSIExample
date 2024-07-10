@@ -7,6 +7,7 @@ set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 find_package(Wayland REQUIRED COMPONENTS Client Cursor)
 find_package(WaylandProtocols REQUIRED)
 find_package(WaylandScanner REQUIRED)
+find_package(X11 REQUIRED COMPONENTS xkbcommon)
 
 add_executable(vfighter Display.cpp Keyboard.cpp main.cpp MappableFd.cpp Pointer.cpp Seat.cpp Window.cpp)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
@@ -15,4 +16,4 @@ ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/st
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
 set_target_properties(vfighter PROPERTIES CXX_STANDARD 23)
 target_include_directories(vfighter PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(vfighter Wayland::Client Wayland::Cursor)
+target_link_libraries(vfighter Wayland::Client Wayland::Cursor X11::xkbcommon)

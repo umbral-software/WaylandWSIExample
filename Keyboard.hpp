@@ -1,7 +1,9 @@
 #pragma once
 
 #include "WaylandPointer.hpp"
+#include "XkbPointer.hpp"
 
+class Display;
 class Seat;
 
 class Keyboard {
@@ -14,5 +16,9 @@ public:
     Keyboard& operator=(const Keyboard&) = delete;
     Keyboard& operator=(Keyboard&&) noexcept = delete;
 private:
+    Display& _display;
+
     WaylandPointer<wl_keyboard> _keyboard;
+    XkbPointer<xkb_keymap> _keymap;
+    XkbPointer<xkb_state> _state;
 };

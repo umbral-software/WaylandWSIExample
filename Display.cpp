@@ -94,6 +94,8 @@ Display::Display() {
     const auto xcursor_size = getenv("XCURSOR_SIZE");
     const auto cursor_size = xcursor_size ? atoi(xcursor_size) : DEFAULT_CURSOR_SIZE;
     _cursor_theme.reset(wl_cursor_theme_load(nullptr, cursor_size, _shm.get()));
+
+    _xkb_context.reset(xkb_context_new(XKB_CONTEXT_NO_FLAGS));
 }
 
 void Display::poll_events() {
