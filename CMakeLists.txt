@@ -11,7 +11,6 @@ find_package(X11 REQUIRED COMPONENTS xkbcommon)
 
 add_executable(vfighter Display.cpp Keyboard.cpp main.cpp MappableFd.cpp Pointer.cpp Seat.cpp Window.cpp)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
-ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/viewporter/viewporter.xml BASENAME viewporter)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
 set_target_properties(vfighter PROPERTIES CXX_STANDARD 23)
