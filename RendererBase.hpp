@@ -8,11 +8,17 @@
 static constexpr size_t NUM_FRAMES_IN_FLIGHT = 2;
 
 struct FrameData {
+    VkCommandPool command_pool;
+    VkCommandBuffer command_buffer;
+
     VkFence fence;
     VkSemaphore semaphore;
 };
 
 struct ImageData {
+    VkImage image;
+    VkImageView image_view;
+    VkFramebuffer framebuffer;
     VkSemaphore semaphore;
 };
 
@@ -33,13 +39,10 @@ protected:
         VkInstance instance;
         VkSurfaceKHR surface;
         
-        VkPhysicalDevice physical_device;
-        uint32_t queue_family_index;
-
-        VkSurfaceFormatKHR surface_format;
-
         VkDevice device;
         VkQueue queue;
+
+        VkRenderPass render_pass;
 
         std::array<FrameData, NUM_FRAMES_IN_FLIGHT> frame_data;
 

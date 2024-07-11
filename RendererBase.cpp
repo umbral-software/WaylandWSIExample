@@ -11,14 +11,18 @@ RendererBase::~RendererBase() {
         wait_all_fences();
 
         for (const auto& image_data : d.image_data) {
-            vkDestroySemaphore(d.device, image_data.semaphore, nullptr);   
+            vkDestroySemaphore(d.device, image_data.semaphore, nullptr);
+            vkDestroyFramebuffer(d.device, image_data.framebuffer, nullptr);
+            vkDestroyImageView(d.device, image_data.image_view, nullptr);
         }
         vkDestroySwapchainKHR(d.device, d.swapchain, nullptr);
 
         for (const auto& frame_data : d.frame_data) {
             vkDestroySemaphore(d.device, frame_data.semaphore, nullptr);   
-            vkDestroyFence(d.device, frame_data.fence, nullptr);        
+            vkDestroyFence(d.device, frame_data.fence, nullptr);
+            vkDestroyCommandPool(d.device, frame_data.command_pool, nullptr);        
         }
+        vkDestroyRenderPass(d.device, d.render_pass, nullptr);
         vkDestroyDevice(d.device, nullptr);
     }
 

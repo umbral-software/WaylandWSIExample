@@ -17,9 +17,13 @@ private:
 
 private:
     const Window& _window;
+
+    VkPhysicalDevice _physical_device;
+    uint32_t _queue_family_index;
+    VkSurfaceFormatKHR _surface_format;
     
     size_t _frame_index;
     
-    std::pair<uint32_t, uint32_t> _swapchain_size;
+    VkExtent2D _swapchain_size;
     uint32_t _image_index;
 };

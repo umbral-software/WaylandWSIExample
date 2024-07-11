@@ -90,31 +90,87 @@ Renderer::Renderer(Window& window)
     };
     check_success(vkCreateWaylandSurfaceKHR(d.instance, &surface_create_info, nullptr, &d.surface));
 
-    std::tie(d.physical_device, d.queue_family_index) = select_device_and_queue(d.instance, d.surface);
+    std::tie(_physical_device, _queue_family_index) = select_device_and_queue(d.instance, d.surface);
 
-    d.surface_format = select_surface_format(d.physical_device, d.surface);
+    _surface_format = select_surface_format(_physical_device, d.surface);
 
+    const VkPhysicalDeviceVulkan13Features vulkan_1_3_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .synchronization2 = true
+    };
     const std::array device_extensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
     const float queue_priority = 1.0f;
     const VkDeviceQueueCreateInfo queue_create_info {
         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = d.queue_family_index,
+        .queueFamilyIndex = _queue_family_index,
         .queueCount = 1,
         .pQueuePriorities = &queue_priority
     };
     const VkDeviceCreateInfo device_create_info {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = &vulkan_1_3_features,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queue_create_info,
         .enabledExtensionCount = device_extensions.size(),
         .ppEnabledExtensionNames = device_extensions.data()
     };
-    check_success(vkCreateDevice(d.physical_device, &device_create_info, nullptr, &d.device));
+    check_success(vkCreateDevice(_physical_device, &device_create_info, nullptr, &d.device));
     volkLoadDevice(d.device);
 
-    vkGetDeviceQueue(d.device, d.queue_family_index, 0, &d.queue);
+    vkGetDeviceQueue(d.device, _queue_family_index, 0, &d.queue);
+
+    const VkAttachmentDescription  attachment_desc {
+        .format = _surface_format.format,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    };
+    const VkAttachmentReference color_attachment_ref {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
+    };
+    const VkSubpassDescription subpass_desc {
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment_ref
+    };
+    const VkSubpassDependency subpass_dependency {
+        .srcSubpass = VK_SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask = VK_ACCESS_NONE,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT
+    };
+    const VkRenderPassCreateInfo render_pass_create_info {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments = &attachment_desc,
+        .subpassCount = 1,
+        .pSubpasses = &subpass_desc,
+        .dependencyCount = 1,
+        .pDependencies = &subpass_dependency
+    };
+    check_success(vkCreateRenderPass(d.device, &render_pass_create_info, nullptr, &d.render_pass));
 
     for (auto& frame_data : d.frame_data) {
+        const VkCommandPoolCreateInfo command_pool_create_info {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+            .queueFamilyIndex = _queue_family_index
+        };
+        check_success(vkCreateCommandPool(d.device, &command_pool_create_info, nullptr, &frame_data.command_pool));
+
+        const VkCommandBufferAllocateInfo command_buffer_allocate_info {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = frame_data.command_pool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1
+        };
+        check_success(vkAllocateCommandBuffers(d.device, &command_buffer_allocate_info, &frame_data.command_buffer));
+
         const VkFenceCreateInfo signalled_fence_create_info {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .flags = VK_FENCE_CREATE_SIGNALED_BIT
@@ -163,12 +219,37 @@ void Renderer::render() {
     }
 
     if (swapchain_usable) {
+        const VkCommandBufferBeginInfo command_buffer_begin_info {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+        };
+
+        const VkClearValue clear_value {
+            .color = { .float32 = {0.0f, 0.0f, 0.0f, 0.0f} }
+        };
+        const VkRenderPassBeginInfo render_pass_begin_info {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = d.render_pass,
+            .framebuffer = image().framebuffer,
+            .renderArea = { {0, 0}, _swapchain_size },
+            .clearValueCount = 1,
+            .pClearValues = &clear_value
+        };
+
+        check_success(vkResetCommandPool(d.device, frame().command_pool, 0));
+        check_success(vkBeginCommandBuffer(frame().command_buffer, &command_buffer_begin_info));
+        vkCmdBeginRenderPass(frame().command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdEndRenderPass(frame().command_buffer);
+        check_success(vkEndCommandBuffer(frame().command_buffer));
+
         const VkPipelineStageFlags wait_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         const VkSubmitInfo submit_info {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = 1,
             .pWaitSemaphores = &frame().semaphore,
             .pWaitDstStageMask = &wait_stage_mask,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &frame().command_buffer,
             .signalSemaphoreCount = 1,
             .pSignalSemaphores = &image().semaphore
         };
@@ -196,14 +277,15 @@ void Renderer::render() {
         }
     }
 
-    if (rebuild_required || _swapchain_size != _window.size()) {
+    const auto window_size = _window.size();
+    if (rebuild_required || _swapchain_size.width != window_size.first || _swapchain_size.height != window_size.second) {
         rebuild_swapchain();
     }
 }
 
 void Renderer::rebuild_swapchain() {
     VkSurfaceCapabilitiesKHR surface_caps;
-    check_success(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(d.physical_device, d.surface, &surface_caps));
+    check_success(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_physical_device, d.surface, &surface_caps));
 
     auto image_count = std::max(surface_caps.minImageCount + 1, DEFAULT_IMAGE_COUNT);
     if (surface_caps.maxImageCount) {
@@ -230,9 +312,9 @@ void Renderer::rebuild_swapchain() {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = d.surface,
         .minImageCount = image_count,
-        .imageFormat = d.surface_format.format,
-        .imageColorSpace = d.surface_format.colorSpace,
-        .imageExtent = { _swapchain_size.first, _swapchain_size.second },
+        .imageFormat = _surface_format.format,
+        .imageColorSpace = _surface_format.colorSpace,
+        .imageExtent = _swapchain_size,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .preTransform = surface_caps.currentTransform,
@@ -250,13 +332,43 @@ void Renderer::rebuild_swapchain() {
     const auto images = std::make_unique_for_overwrite<VkImage[]>(num_images);
     check_success(vkGetSwapchainImagesKHR(d.device, d.swapchain, &num_images, images.get()));
 
+    // FIXME: This is duplicating the code in ~RendererBase();
     for (auto& image_data : d.image_data) {
         vkDestroySemaphore(d.device, image_data.semaphore, nullptr);
+        vkDestroyFramebuffer(d.device, image_data.framebuffer, nullptr);
+        vkDestroyImageView(d.device, image_data.image_view, nullptr);
     }
     d.image_data.clear();
 
     d.image_data.resize(num_images);
-    for (auto& image_data : d.image_data) {
+    for (uint32_t i = 0; i < num_images; ++i) {
+        auto& image_data = d.image_data[i];
+        image_data.image = images[i];
+
+        const VkImageViewCreateInfo image_view_create_info {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = image_data.image,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = _surface_format.format,
+            .subresourceRange = { 
+                VK_IMAGE_ASPECT_COLOR_BIT, 
+                0, 1, 
+                0, 1
+            }
+        };
+        check_success(vkCreateImageView(d.device, &image_view_create_info, nullptr, &image_data.image_view));
+
+        const VkFramebufferCreateInfo framebuffer_create_info {
+            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .renderPass = d.render_pass,
+            .attachmentCount = 1,
+            .pAttachments = &image_data.image_view,
+            .width = _swapchain_size.width,
+            .height = _swapchain_size.height,
+            .layers = 1
+        };
+        check_success(vkCreateFramebuffer(d.device, &framebuffer_create_info, nullptr, &image_data.framebuffer));
+
         const VkSemaphoreCreateInfo semaphore_create_info {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
         };
