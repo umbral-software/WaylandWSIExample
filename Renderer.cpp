@@ -6,13 +6,62 @@
 #include <vulkan/vk_enum_string_helper.h>
 
 #include <algorithm>
-#include <memory>
-#include <stdexcept>
 
-constexpr void check_success(VkResult result) {
+static constexpr uint32_t DEFAULT_IMAGE_COUNT = 3;
+
+static constexpr void check_success(VkResult result) {
     if (result) {
         throw std::runtime_error(string_VkResult(result));
     }
+}
+
+static std::pair<VkPhysicalDevice, uint32_t> select_device_and_queue(VkInstance instance, VkSurfaceKHR surface) {
+    uint32_t num_physical_devices;
+    check_success(vkEnumeratePhysicalDevices(instance, &num_physical_devices, nullptr));
+    auto physical_devices = std::make_unique_for_overwrite<VkPhysicalDevice[]>(num_physical_devices);
+    check_success(vkEnumeratePhysicalDevices(instance, &num_physical_devices, physical_devices.get()));
+
+    for (uint32_t i = 0; i < num_physical_devices; ++i) {
+        const auto physical_device = physical_devices[i];
+
+        uint32_t num_queue_families;
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &num_queue_families, nullptr);
+        const auto queue_family_props = std::make_unique_for_overwrite<VkQueueFamilyProperties[]>(num_queue_families);
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &num_queue_families, queue_family_props.get());
+
+        for (uint32_t j = 0; j < num_queue_families; ++j) {
+            VkBool32 supported;
+            check_success(vkGetPhysicalDeviceSurfaceSupportKHR(physical_devices[i], j, surface, &supported));
+
+            if (queue_family_props[j].queueFlags & VK_QUEUE_GRAPHICS_BIT && supported) {
+                return { physical_devices[i], j };
+            }
+        }
+    }
+
+    throw std::runtime_error("No supported device and queue");
+}
+
+static VkSurfaceFormatKHR select_surface_format(VkPhysicalDevice physical_device, VkSurfaceKHR surface) {
+    uint32_t num_formats;
+    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &num_formats, nullptr));
+    const auto surface_formats = std::make_unique_for_overwrite<VkSurfaceFormatKHR[]>(num_formats);
+    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &num_formats, surface_formats.get()));
+
+    for (uint32_t i = 0; i < num_formats; ++i) {
+        const auto& surface_format = surface_formats[i];
+        if (surface_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            switch (surface_format.format) {
+            case VK_FORMAT_R8G8B8A8_SRGB:
+            case VK_FORMAT_B8G8R8A8_SRGB:
+                return surface_format;
+            default:
+                break;
+            }
+        }
+    }
+
+    throw std::runtime_error("No supported surface format");
 }
 
 Renderer::Renderer(Window& window)
@@ -41,19 +90,9 @@ Renderer::Renderer(Window& window)
     };
     check_success(vkCreateWaylandSurfaceKHR(d.instance, &surface_create_info, nullptr, &d.surface));
 
-    uint32_t num_physical_devices;
-    check_success(vkEnumeratePhysicalDevices(d.instance, &num_physical_devices, nullptr));
-    auto physical_devices = std::make_unique_for_overwrite<VkPhysicalDevice[]>(num_physical_devices);
-    check_success(vkEnumeratePhysicalDevices(d.instance, &num_physical_devices, physical_devices.get()));
-    
-    std::tie(d.physical_device, d.queue_family_index) = std::make_pair(physical_devices[0], 0); // FIXME
+    std::tie(d.physical_device, d.queue_family_index) = select_device_and_queue(d.instance, d.surface);
 
-    uint32_t num_formats;
-    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(d.physical_device, d.surface, &num_formats, nullptr));
-    const auto surface_formats = std::make_unique_for_overwrite<VkSurfaceFormatKHR[]>(num_formats);
-    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(d.physical_device, d.surface, &num_formats, surface_formats.get()));
-
-    d.surface_format = surface_formats[0]; // FIXME
+    d.surface_format = select_surface_format(d.physical_device, d.surface);
 
     const std::array device_extensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
     const float queue_priority = 1.0f;
@@ -166,6 +205,20 @@ void Renderer::rebuild_swapchain() {
     VkSurfaceCapabilitiesKHR surface_caps;
     check_success(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(d.physical_device, d.surface, &surface_caps));
 
+    auto image_count = std::max(surface_caps.minImageCount + 1, DEFAULT_IMAGE_COUNT);
+    if (surface_caps.maxImageCount) {
+        image_count = std::max(image_count, surface_caps.maxImageCount);
+    }
+    
+    VkCompositeAlphaFlagBitsKHR compositeAlpha;
+    if (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) {
+        compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    } else if (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
+        compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+    } else {
+        throw std::runtime_error("No supported composite alpha");
+    }
+
     const auto window_size = _window.size();
 
     _swapchain_size = {
@@ -176,14 +229,14 @@ void Renderer::rebuild_swapchain() {
     const VkSwapchainCreateInfoKHR swapchain_create_info {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = d.surface,
-        .minImageCount = surface_caps.minImageCount, // FIXME
+        .minImageCount = image_count,
         .imageFormat = d.surface_format.format,
         .imageColorSpace = d.surface_format.colorSpace,
         .imageExtent = { _swapchain_size.first, _swapchain_size.second },
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .preTransform = surface_caps.currentTransform,
-        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // FIXME
+        .compositeAlpha = compositeAlpha,
         .presentMode = VK_PRESENT_MODE_FIFO_KHR, // FIFO is always suppported
         .clipped = true,
         .oldSwapchain = d.swapchain
