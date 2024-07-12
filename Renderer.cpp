@@ -10,6 +10,19 @@
 #include <filesystem>
 #include <fstream>
 
+using namespace std::literals;
+
+[[maybe_unused]]
+static constexpr float STAGING_PRIORITY = 0.0f;
+[[maybe_unused]]
+static constexpr float LOW_PRIORITY = 0.25f;
+[[maybe_unused]]
+static constexpr float NORMAL_PRIORITY = 0.5f;
+[[maybe_unused]]
+static constexpr float HIGH_PRIORITY = 0.75f;
+[[maybe_unused]]
+static constexpr float RENDER_TARGET_PRIORITY = 1.0f;
+
 struct Vertex {
     std::array<float, 3> position;
     std::array<uint8_t, 4> color;
@@ -56,17 +69,22 @@ static std::pair<VkPhysicalDevice, uint32_t> select_device_and_queue(VkInstance 
     for (uint32_t i = 0; i < num_physical_devices; ++i) {
         const auto physical_device = physical_devices[i];
 
-        uint32_t num_queue_families;
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &num_queue_families, nullptr);
-        const auto queue_family_props = std::make_unique_for_overwrite<VkQueueFamilyProperties[]>(num_queue_families);
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &num_queue_families, queue_family_props.get());
+        VkPhysicalDeviceProperties physical_device_props;
+        vkGetPhysicalDeviceProperties(physical_device, &physical_device_props);
 
-        for (uint32_t j = 0; j < num_queue_families; ++j) {
-            VkBool32 supported;
-            check_success(vkGetPhysicalDeviceSurfaceSupportKHR(physical_devices[i], j, surface, &supported));
+        if (physical_device_props.apiVersion >= VK_API_VERSION_1_3) {
+            uint32_t num_queue_families;
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &num_queue_families, nullptr);
+            const auto queue_family_props = std::make_unique_for_overwrite<VkQueueFamilyProperties[]>(num_queue_families);
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &num_queue_families, queue_family_props.get());
 
-            if (queue_family_props[j].queueFlags & VK_QUEUE_GRAPHICS_BIT && supported) {
-                return { physical_devices[i], j };
+            for (uint32_t j = 0; j < num_queue_families; ++j) {
+                VkBool32 supported;
+                check_success(vkGetPhysicalDeviceSurfaceSupportKHR(physical_devices[i], j, surface, &supported));
+
+                if (queue_family_props[j].queueFlags & VK_QUEUE_GRAPHICS_BIT && supported) {
+                    return { physical_devices[i], j };
+                }
             }
         }
     }
@@ -101,16 +119,44 @@ Renderer::Renderer(Window& window)
 {
     check_success(volkInitialize());
 
+    uint32_t supported_api_version;
+    check_success(vkEnumerateInstanceVersion(&supported_api_version));
+    if (supported_api_version < VK_API_VERSION_1_3) {
+        throw std::runtime_error("Instance does not support vulkan 1.3");
+    }
+
+    uint32_t num_instance_extensions;
+    check_success(vkEnumerateInstanceExtensionProperties(nullptr, &num_instance_extensions, nullptr));
+    const auto instance_extension_properties = std::make_unique_for_overwrite<VkExtensionProperties[]>(num_instance_extensions);
+    check_success(vkEnumerateInstanceExtensionProperties(nullptr, &num_instance_extensions, instance_extension_properties.get()));
+
+    const std::array required_instance_extensions {
+        VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
+        VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
+        VK_KHR_SURFACE_EXTENSION_NAME,
+        VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
+    };
+    for (const auto extension : required_instance_extensions) {
+        bool found = false;
+        for (uint32_t i = 0; i < num_instance_extensions; ++i) {
+            if (!strcmp(instance_extension_properties[i].extensionName, extension)) {
+                found = true;
+            }
+        }
+        if (!found) {
+            throw std::runtime_error("Missing required extension: "s + extension);
+        }
+    }
+
     const VkApplicationInfo application_info {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .apiVersion = VK_API_VERSION_1_3
     };
-    const std::array instance_extensions { VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME };
     const VkInstanceCreateInfo instance_create_info {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &application_info,
-        .enabledExtensionCount = instance_extensions.size(),
-        .ppEnabledExtensionNames = instance_extensions.data()
+        .enabledExtensionCount = required_instance_extensions.size(),
+        .ppEnabledExtensionNames = required_instance_extensions.data()
     };
     check_success(vkCreateInstance(&instance_create_info, nullptr, &d.instance));
     volkLoadInstanceOnly(d.instance);
@@ -126,16 +172,102 @@ Renderer::Renderer(Window& window)
 
     _surface_format = select_surface_format(_physical_device, d.surface);
 
-    const VkPhysicalDeviceMaintenance5FeaturesKHR maintenance_5_features {
+    uint32_t num_device_extensions;
+    check_success(vkEnumerateDeviceExtensionProperties(_physical_device, nullptr, &num_device_extensions, nullptr));
+    const auto device_extension_properties = std::make_unique_for_overwrite<VkExtensionProperties[]>(num_device_extensions);
+    check_success(vkEnumerateDeviceExtensionProperties(_physical_device, nullptr, &num_device_extensions, device_extension_properties.get()));
+
+    const std::array required_device_extensions {
+        VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+    for (const auto extension : required_device_extensions) {
+        bool found = false;
+        for (uint32_t i = 0; i < num_device_extensions; ++i) {
+            if (!strcmp(device_extension_properties[i].extensionName, extension)) {
+                found = true;
+            }
+        }
+        if (!found) {
+            throw std::runtime_error("Missing required extension: "s + extension);
+        }
+    }
+
+    bool ext_memory_priority_supported = false;
+    bool ext_pagable_device_local_memory_supported = false;
+    for (uint32_t i = 0; i < num_device_extensions; ++i) {
+        const auto& extension_props = device_extension_properties[i];
+        if (!strcmp(extension_props.extensionName, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME)) {
+            ext_memory_priority_supported = true;
+        } else if (!strcmp(extension_props.extensionName, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME)) {
+            ext_pagable_device_local_memory_supported = true;
+        }
+    }
+
+    if (!ext_memory_priority_supported) {
+        ext_pagable_device_local_memory_supported = false;
+    }
+    
+    VkPhysicalDeviceMaintenance5FeaturesKHR supported_maintenance5_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR
+    };
+    VkPhysicalDeviceFeatures2 supported_physical_device_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+        .pNext = &supported_maintenance5_features
+    };
+    VkPhysicalDeviceMemoryPriorityFeaturesEXT supported_memory_priority_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT,
+    };
+    if (ext_memory_priority_supported) {
+        supported_memory_priority_features.pNext = supported_physical_device_features.pNext;
+        supported_physical_device_features.pNext = &supported_memory_priority_features;
+    }
+    VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT supported_pageable_device_local_memory_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT
+    };
+    if (ext_pagable_device_local_memory_supported) {
+        supported_pageable_device_local_memory_features.pNext = supported_memory_priority_features.pNext;
+        supported_memory_priority_features.pNext = &supported_pageable_device_local_memory_features;
+    }
+    vkGetPhysicalDeviceFeatures2(_physical_device, &supported_physical_device_features);
+
+    if (!supported_maintenance5_features.maintenance5) {
+        throw std::runtime_error("Required featue `maintenance5` not supported");
+    }
+    if (!supported_memory_priority_features.memoryPriority) {
+        ext_memory_priority_supported = false;
+    }
+    if (!supported_pageable_device_local_memory_features.pageableDeviceLocalMemory || !ext_memory_priority_supported) {
+        ext_pagable_device_local_memory_supported = false;
+    }
+
+    std::vector device_extensions(required_device_extensions.begin(), required_device_extensions.end());
+    if (ext_memory_priority_supported) {
+        device_extensions.emplace_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
+    }
+    if (ext_pagable_device_local_memory_supported) {
+        device_extensions.emplace_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
+    }
+
+    VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT desired_pageable_memory_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT,
+        .pageableDeviceLocalMemory = true
+    };
+    VkPhysicalDeviceMemoryPriorityFeaturesEXT desired_memory_priority_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT,
+        .pNext = ext_pagable_device_local_memory_supported ? &desired_pageable_memory_features : nullptr,
+        .memoryPriority = true,
+    };
+    VkPhysicalDeviceMaintenance5FeaturesKHR desired_maintenance_5_features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR,
+        .pNext = ext_memory_priority_supported ? &desired_memory_priority_features : nullptr,
         .maintenance5 = true
     };
-    const VkPhysicalDeviceVulkan13Features vulkan_1_3_features {
+    VkPhysicalDeviceVulkan13Features desired_vulkan_1_3_features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .pNext = const_cast<void *>(static_cast<const void *>(&maintenance_5_features)),
+        .pNext = &desired_maintenance_5_features,
         .synchronization2 = true
     };
-    const std::array device_extensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE_5_EXTENSION_NAME };
     const float queue_priority = 1.0f;
     const VkDeviceQueueCreateInfo queue_create_info {
         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -145,17 +277,21 @@ Renderer::Renderer(Window& window)
     };
     const VkDeviceCreateInfo device_create_info {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = &vulkan_1_3_features,
+        .pNext = &desired_vulkan_1_3_features,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queue_create_info,
-        .enabledExtensionCount = device_extensions.size(),
+        .enabledExtensionCount = static_cast<uint32_t>(device_extensions.size()),
         .ppEnabledExtensionNames = device_extensions.data()
     };
     check_success(vkCreateDevice(_physical_device, &device_create_info, nullptr, &d.device));
     volkLoadDevice(d.device);
 
+    VmaAllocatorCreateFlags allocator_flags = VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
+    if (ext_memory_priority_supported) {
+        allocator_flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
+    }
     const VmaAllocatorCreateInfo allocator_create_info {
-        .flags = VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT,
+        .flags = allocator_flags,
         .physicalDevice = _physical_device,
         .device = d.device,
         .instance = d.instance,
@@ -316,7 +452,8 @@ Renderer::Renderer(Window& window)
     };
     const VmaAllocationCreateInfo mappable_allocation_info {
         .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, // FIXME: Change to staging-instead bit
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        .priority = HIGH_PRIORITY
     };
     vmaCreateBuffer(d.allocator, &index_buffer_create_info, &mappable_allocation_info, &d.index_buffer, &d.index_allocation, nullptr);
 
