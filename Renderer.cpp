@@ -105,7 +105,7 @@ Renderer::Renderer(Window& window)
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .apiVersion = VK_API_VERSION_1_3
     };
-    const std::array instance_extensions { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME };
+    const std::array instance_extensions { VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME };
     const VkInstanceCreateInfo instance_create_info {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &application_info,
@@ -480,18 +480,29 @@ void Renderer::render() {
 }
 
 void Renderer::rebuild_swapchain() {
-    VkSurfaceCapabilitiesKHR surface_caps;
-    check_success(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_physical_device, d.surface, &surface_caps));
+    const VkSurfacePresentModeEXT present_mode {
+        .sType = VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT,
+        .presentMode = VK_PRESENT_MODE_FIFO_KHR // Always supported
+    };
+    const VkPhysicalDeviceSurfaceInfo2KHR surface_info {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
+        .pNext = &present_mode,
+        .surface = d.surface
+    };
+    VkSurfaceCapabilities2KHR surface_caps2 {
+        .sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR,
+    };
+    check_success(vkGetPhysicalDeviceSurfaceCapabilities2KHR(_physical_device, &surface_info, &surface_caps2));
 
-    auto image_count = std::max(surface_caps.minImageCount + 1, DEFAULT_IMAGE_COUNT);
-    if (surface_caps.maxImageCount) {
-        image_count = std::max(image_count, surface_caps.maxImageCount);
+    auto image_count = std::max(surface_caps2.surfaceCapabilities.minImageCount + 1, DEFAULT_IMAGE_COUNT);
+    if (surface_caps2.surfaceCapabilities.maxImageCount) {
+        image_count = std::max(image_count, surface_caps2.surfaceCapabilities.maxImageCount);
     }
     
     VkCompositeAlphaFlagBitsKHR compositeAlpha;
-    if (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) {
+    if (surface_caps2.surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) {
         compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    } else if (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
+    } else if (surface_caps2.surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
         compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
     } else {
         throw std::runtime_error("No supported composite alpha");
@@ -500,8 +511,8 @@ void Renderer::rebuild_swapchain() {
     const auto window_size = _window.size();
 
     _swapchain_size = {
-        std::clamp(window_size.first, surface_caps.minImageExtent.width, surface_caps.maxImageExtent.width),
-        std::clamp(window_size.second, surface_caps.minImageExtent.height, surface_caps.maxImageExtent.height),
+        std::clamp(window_size.first, surface_caps2.surfaceCapabilities.minImageExtent.width, surface_caps2.surfaceCapabilities.maxImageExtent.width),
+        std::clamp(window_size.second, surface_caps2.surfaceCapabilities.minImageExtent.height, surface_caps2.surfaceCapabilities.maxImageExtent.height),
     };
 
     const VkSwapchainCreateInfoKHR swapchain_create_info {
@@ -513,9 +524,9 @@ void Renderer::rebuild_swapchain() {
         .imageExtent = _swapchain_size,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .preTransform = surface_caps.currentTransform,
+        .preTransform = surface_caps2.surfaceCapabilities.currentTransform,
         .compositeAlpha = compositeAlpha,
-        .presentMode = VK_PRESENT_MODE_FIFO_KHR, // FIFO is always suppported
+        .presentMode = present_mode.presentMode,
         .clipped = true,
         .oldSwapchain = d.swapchain
     };
