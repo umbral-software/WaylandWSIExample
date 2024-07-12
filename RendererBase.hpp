@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 
 #include <array>
 #include <vector>
@@ -40,9 +40,15 @@ protected:
         VkSurfaceKHR surface;
         
         VkDevice device;
+        VmaAllocator allocator;
         VkQueue queue;
 
         VkRenderPass render_pass;
+        VkPipelineLayout pipeline_layout;
+        VkPipeline pipeline;
+
+        VkBuffer index_buffer, vertex_buffer;
+        VmaAllocation index_allocation, vertex_allocation;
 
         std::array<FrameData, NUM_FRAMES_IN_FLIGHT> frame_data;
 

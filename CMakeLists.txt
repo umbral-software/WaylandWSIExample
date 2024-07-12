@@ -10,7 +10,33 @@ find_package(WaylandProtocols REQUIRED)
 find_package(WaylandScanner REQUIRED)
 find_package(X11 REQUIRED COMPONENTS xkbcommon)
 
-add_executable(vfighter Display.cpp Keyboard.cpp main.cpp MappableFd.cpp Pointer.cpp Renderer.cpp RendererBase.cpp Seat.cpp volk.c Window.cpp)
+set(GLSLC_ARGS "--target-env=vulkan1.3" CACHE STRING "Additional arguments for glslc")
+
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    list(APPEND GLSLC_ARGS "-g")
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+    list(APPEND GLSLC_ARGS "-O")
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+    list(APPEND GLSLC_ARGS "-O" "-g")
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "MinSizeRel")
+    list(APPEND GLSLC_ARGS "-Os")
+endif()
+
+function(add_shader_target target)
+    set(${all_binaries} "")
+    foreach(shader ${ARGN})
+        set(source ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${shader})
+        set(binary ${CMAKE_CURRENT_BINARY_DIR}/shaders/${shader}.spv)
+        add_custom_command(
+            OUTPUT ${binary}
+            MAIN_DEPENDENCY ${source}
+            COMMAND Vulkan::glslc ${GLSLC_ARGS} ${source} -o ${binary})
+        list(APPEND all_binaries ${binary})
+    endforeach()
+    add_custom_target(${target} DEPENDS ${all_binaries})
+endfunction()
+
+add_executable(vfighter Display.cpp Keyboard.cpp main.cpp MappableFd.cpp Pointer.cpp Renderer.cpp RendererBase.cpp Seat.cpp vk_mem_alloc.cpp volk.c Window.cpp)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
@@ -18,3 +44,6 @@ set_target_properties(vfighter PROPERTIES CXX_STANDARD 23)
 target_compile_definitions(vfighter PRIVATE VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
 target_include_directories(vfighter PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(vfighter Wayland::Client Wayland::Cursor X11::xkbcommon)
+
+add_shader_target(all_shaders main.frag main.vert)
+add_dependencies(vfighter all_shaders)

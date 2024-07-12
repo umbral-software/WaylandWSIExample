@@ -22,7 +22,15 @@ RendererBase::~RendererBase() {
             vkDestroyFence(d.device, frame_data.fence, nullptr);
             vkDestroyCommandPool(d.device, frame_data.command_pool, nullptr);        
         }
+
+        vmaDestroyBuffer(d.allocator, d.vertex_buffer, d.vertex_allocation);
+        vmaDestroyBuffer(d.allocator, d.index_buffer, d.index_allocation);
+
+        vkDestroyPipeline(d.device, d.pipeline, nullptr);
+        vkDestroyPipelineLayout(d.device, d.pipeline_layout, nullptr);
         vkDestroyRenderPass(d.device, d.render_pass, nullptr);
+
+        vmaDestroyAllocator(d.allocator);
         vkDestroyDevice(d.device, nullptr);
     }
 
