@@ -11,6 +11,7 @@
 
 Keyboard::Keyboard(Seat& seat)
     :_display(seat._display)
+    ,_focus(nullptr)
 {
     static constexpr wl_keyboard_listener keyboard_listener {
         .keymap = [](void *data, wl_keyboard *, uint32_t format, int fd, uint32_t size){

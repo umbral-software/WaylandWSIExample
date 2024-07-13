@@ -4,6 +4,7 @@
 
 class Display;
 class Seat;
+class Window;
 
 class Pointer {
 public:
@@ -17,6 +18,7 @@ public:
 
 private:
     Display& _display;
+    Window *_focus;
 
     WaylandPointer<wl_pointer> _pointer;
     
