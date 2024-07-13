@@ -58,18 +58,8 @@ Display::Display() {
                 self._decoration_manager.reset(static_cast<zxdg_decoration_manager_v1 *>(wl_registry_bind(registry, name, &zxdg_decoration_manager_v1_interface, DESIRED_XDG_DECORATION_V1_VERSION)));
             }
         },
-        .global_remove = [](void *data, wl_registry *, uint32_t name) noexcept {
-            auto& self = *static_cast<Display*>(data);
+        .global_remove = [](void *, wl_registry *, uint32_t) noexcept {
             
-            if (name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._compositor.get()))
-                || name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._shm.get()))
-                || name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._wm_base.get()))
-                || (self._content_type_manager && name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._content_type_manager.get())))
-                || (self._decoration_manager && name == wl_proxy_get_id(reinterpret_cast<wl_proxy *>(self._decoration_manager.get()))))
-            {
-                std::puts("Lost required wayland global");
-                std::terminate();
-            }
         }
     };
 
