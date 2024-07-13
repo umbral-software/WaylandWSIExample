@@ -3,6 +3,7 @@
 #include "Display.hpp"
 #include "MappableFd.hpp"
 #include "Seat.hpp"
+#include "Window.hpp"
 
 #include <xkbcommon/xkbcommon-keysyms.h>
 
@@ -24,40 +25,43 @@ Keyboard::Keyboard(Seat& seat)
             default:
                 break;
             }
-            
         },
-        .enter = [](void *, wl_keyboard *, uint32_t, wl_surface *, wl_array *){
-            
+        .enter = [](void *data, wl_keyboard *, uint32_t, wl_surface *surface, wl_array *){
+            auto& self = *reinterpret_cast<Keyboard *>(data);
+            self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
         },
-        .leave = [](void *, wl_keyboard *, uint32_t, wl_surface *){
-
+        .leave = [](void *data, wl_keyboard *, uint32_t, wl_surface *){
+             auto& self = *reinterpret_cast<Keyboard *>(data);
+            self._focus = nullptr;           
         },
         .key = [](void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t key, uint32_t state){
             auto& self = *reinterpret_cast<Keyboard *>(data);
             const auto xkb_key = key + XKB_EVDEV_OFFSET;
-            switch (state) {
-            case WL_KEYBOARD_KEY_STATE_PRESSED: {
-                const xkb_keysym_t *syms;
-                const auto num_syms = xkb_state_key_get_syms(self._state.get(), xkb_key, &syms);
-                for (auto i = 0; i < num_syms; ++i) {
-                    switch (syms[i]) {
-                    case XKB_KEY_Return:
-                        putchar('\n');
-                        break;
-                    default:
-                        break;
-                    }
-                }
+            
+            if (self._focus) {
+                switch (state) {
+                case WL_KEYBOARD_KEY_STATE_PRESSED: {
+                    const xkb_keysym_t *syms;
+                    const auto num_syms = xkb_state_key_get_syms(self._state.get(), xkb_key, &syms);
 
-                const size_t chars = static_cast<size_t>(1 + xkb_state_key_get_utf8(self._state.get(), xkb_key, nullptr, 0));
-                const auto buf = std::make_unique_for_overwrite<char[]>(chars);
-                xkb_state_key_get_utf8(self._state.get(), xkb_key, buf.get(), chars);
-                fputs(buf.get(), stdout);
-                break;
-            }
-            case WL_KEYBOARD_KEY_STATE_RELEASED:
-            default:
-                break;
+                    const auto shift = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE);
+                    const auto ctrl = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE);
+                    const auto alt = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE);
+
+                    for (auto i = 0; i < num_syms; ++i) {
+                        self._focus->keysym(syms[i], shift, ctrl, alt);
+                    }
+
+                    const size_t chars = static_cast<size_t>(1 + xkb_state_key_get_utf8(self._state.get(), xkb_key, nullptr, 0));
+                    const auto buf = std::make_unique_for_overwrite<char[]>(chars);
+                    xkb_state_key_get_utf8(self._state.get(), xkb_key, buf.get(), chars);
+                    self._focus->text(std::string_view(buf.get(), chars));
+                    break;
+                }
+                case WL_KEYBOARD_KEY_STATE_RELEASED:
+                default:
+                    break;
+                }
             }
         },
         .modifiers = [](void *data, wl_keyboard *, uint32_t, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group){

@@ -5,6 +5,7 @@
 
 class Display;
 class Seat;
+class Window;
 
 class Keyboard {
 public:
@@ -17,6 +18,7 @@ public:
     Keyboard& operator=(Keyboard&&) noexcept = delete;
 private:
     Display& _display;
+    Window *_focus;
 
     WaylandPointer<wl_keyboard> _keyboard;
     XkbPointer<xkb_keymap> _keymap;

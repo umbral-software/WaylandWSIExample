@@ -62,9 +62,13 @@ Window::Window(Display& display)
 
             switch (mode) {
             case ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:
-                xdg_toplevel_set_fullscreen(self._toplevel.get(), nullptr);
+                self._has_server_decorations = false;
+                if (!self._fullscreen) {
+                    self.toggle_fullscreen();
+                }
                 break;
             case ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE:
+                self._has_server_decorations = true;
                 break;
             default:
                 break;
@@ -92,13 +96,39 @@ Window::Window(Display& display)
         _toplevel_decoration.reset(zxdg_decoration_manager_v1_get_toplevel_decoration(display._decoration_manager.get(), _toplevel.get()));
         zxdg_toplevel_decoration_v1_add_listener(_toplevel_decoration.get(), &toplevel_decoration_listener, this);
         zxdg_toplevel_decoration_v1_set_mode(_toplevel_decoration.get(), ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-    } else {
-        xdg_toplevel_set_fullscreen(_toplevel.get(), nullptr);
     }
+
+    _closed = false;
+    _fullscreen = false;
+    _has_server_decorations = !!_display._decoration_manager;
 
     _actual_size = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
     _desired_size = {0, 0};
-    _closed = false;
+
+    if (!_has_server_decorations) {
+        toggle_fullscreen();
+    }
+}
+
+void Window::keysym(uint32_t keysym, bool, bool, bool alt) noexcept {
+    switch (keysym) {
+    case XKB_KEY_Return:
+        if (alt) {
+            toggle_fullscreen();
+        } else {
+            std::putchar('\n');
+        }
+        break;
+    case XKB_KEY_Escape:
+        _closed = true;
+        break;
+    default:
+        break;
+    }
+}
+
+void Window::text(std::string_view str) const noexcept {
+    fwrite(str.data(), 1, str.size(), stdout);
 }
 
 wl_display *Window::display() noexcept {
@@ -115,4 +145,15 @@ std::pair<uint32_t, uint32_t> Window::size() const noexcept {
 
 wl_surface *Window::surface() noexcept {
     return _surface.get();
+}
+
+void Window::toggle_fullscreen() noexcept {
+    if (_has_server_decorations) {
+        if (_fullscreen) {
+            xdg_toplevel_unset_fullscreen(_toplevel.get());
+        } else {
+            xdg_toplevel_set_fullscreen(_toplevel.get(), nullptr);
+        }
+        _fullscreen = !_fullscreen;
+    }
 }
