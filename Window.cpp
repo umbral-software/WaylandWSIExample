@@ -11,21 +11,6 @@ static constexpr char WINDOW_TITLE[] = "vfighter";
 Window::Window(Display& display)
     :_display(display)
 {
-    static constexpr wl_surface_listener surface_listener {
-        .enter = [](void *, wl_surface *, wl_output *) noexcept {
-            
-        },
-        .leave = [](void *, wl_surface *, wl_output *) noexcept {
-            
-        },
-        .preferred_buffer_scale = [](void *, wl_surface *, int32_t) noexcept {
-            
-        },
-        .preferred_buffer_transform = [](void *, wl_surface *, uint32_t) noexcept {
-            
-        },
-    };
-
     static constexpr xdg_surface_listener wm_surface_listener {
         .configure = [](void *data, xdg_surface *surface, uint32_t serial) noexcept {
             auto& self = *static_cast<Window *>(data);
@@ -77,7 +62,6 @@ Window::Window(Display& display)
     };
 
     _surface.reset(wl_compositor_create_surface(_display._compositor.get()));
-    wl_surface_add_listener(_surface.get(), &surface_listener, this);
 
     _wm_surface.reset(xdg_wm_base_get_xdg_surface(_display._wm_base.get(), _surface.get()));
     xdg_surface_add_listener(_wm_surface.get(), &wm_surface_listener, this);
