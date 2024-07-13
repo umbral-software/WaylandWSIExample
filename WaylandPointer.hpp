@@ -1,7 +1,6 @@
 #pragma once
 
 #include "wayland-content-type-client-protocol.h"
-#include "wayland-viewporter-client-protocol.h"
 #include "wayland-xdg-decoration-client-protocol.h"
 #include "wayland-xdg-shell-client-protocol.h"
 
@@ -60,14 +59,6 @@ struct WaylandDeleter {
 
     void operator()(wp_content_type_v1 *wp_content_type_v1) const noexcept {
         wp_content_type_v1_destroy(wp_content_type_v1);
-    }
-
-    void operator()(wp_viewport *wp_viewport) const noexcept {
-        wp_viewport_destroy(wp_viewport);
-    }
-
-    void operator()(wp_viewporter *wp_viewporter) const noexcept {
-        wp_viewporter_destroy(wp_viewporter);
     }
 
     void operator()(xdg_surface *xdg_surface) const noexcept {
