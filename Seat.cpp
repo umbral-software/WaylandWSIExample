@@ -7,11 +7,20 @@ Seat::Seat(Display& display, wl_seat *seat)
         .capabilities = [](void *data, wl_seat *, uint32_t capabilities){
             auto& self = *static_cast<Seat *>(data);
 
-            if (WL_SEAT_CAPABILITY_KEYBOARD & capabilities && !self._keyboard) {
-                self._keyboard.emplace(self);
+            if (WL_SEAT_CAPABILITY_KEYBOARD & capabilities) {
+                if (!self._keyboard) {
+                    self._keyboard.emplace(self);
+                }
+            } else {
+                self._keyboard.reset();
             }
-            if (WL_SEAT_CAPABILITY_POINTER & capabilities && !self._pointer) {
-                self._pointer.emplace(self);
+
+            if (WL_SEAT_CAPABILITY_POINTER & capabilities) {
+                if (!self._pointer) {
+                    self._pointer.emplace(self);
+                }
+            } else {
+                self._pointer.reset();
             }
         },
         .name = [](void *, wl_seat *, const char *){
