@@ -62,6 +62,7 @@ Window::Window(Display& display)
     };
 
     _surface.reset(wl_compositor_create_surface(_display._compositor.get()));
+    wl_surface_set_user_data(_surface.get(), this);
 
     _wm_surface.reset(xdg_wm_base_get_xdg_surface(_display._wm_base.get(), _surface.get()));
     xdg_surface_add_listener(_wm_surface.get(), &wm_surface_listener, this);
