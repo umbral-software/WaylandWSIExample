@@ -56,9 +56,12 @@ Keyboard::Keyboard(Seat& seat)
                     }
 
                     const size_t chars = static_cast<size_t>(1 + xkb_state_key_get_utf8(self._state.get(), xkb_key, nullptr, 0));
-                    const auto buf = std::make_unique_for_overwrite<char[]>(chars);
-                    xkb_state_key_get_utf8(self._state.get(), xkb_key, buf.get(), chars);
-                    self._focus->text(std::string_view(buf.get(), chars));
+                    if (chars > 0) {
+                        const auto buf = std::make_unique_for_overwrite<char[]>(chars);
+                        xkb_state_key_get_utf8(self._state.get(), xkb_key, buf.get(), chars);
+
+                        self._focus->text(std::string_view(buf.get(), chars));
+                    }
                     break;
                 }
                 case WL_KEYBOARD_KEY_STATE_RELEASED:
