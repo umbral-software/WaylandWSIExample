@@ -14,7 +14,7 @@ Keyboard::Keyboard(Seat& seat)
     ,_focus(nullptr)
 {
     static constexpr wl_keyboard_listener keyboard_listener {
-        .keymap = [](void *data, wl_keyboard *, uint32_t format, int fd, uint32_t size){
+        .keymap = [](void *data, wl_keyboard *, uint32_t format, int fd, uint32_t size) noexcept {
             auto& self = *reinterpret_cast<Keyboard *>(data);
             MappableFd file(fd, size);
 
@@ -27,17 +27,17 @@ Keyboard::Keyboard(Seat& seat)
                 break;
             }
         },
-        .enter = [](void *data, wl_keyboard *, uint32_t, wl_surface *surface, wl_array *){
+        .enter = [](void *data, wl_keyboard *, uint32_t, wl_surface *surface, wl_array *) noexcept {
             auto& self = *reinterpret_cast<Keyboard *>(data);
             if (surface) {
                 self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
             }
         },
-        .leave = [](void *data, wl_keyboard *, uint32_t, wl_surface *){
+        .leave = [](void *data, wl_keyboard *, uint32_t, wl_surface *) noexcept {
              auto& self = *reinterpret_cast<Keyboard *>(data);
             self._focus = nullptr;           
         },
-        .key = [](void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t key, uint32_t state){
+        .key = [](void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t key, uint32_t state) noexcept {
             auto& self = *reinterpret_cast<Keyboard *>(data);
             const auto xkb_key = key + XKB_EVDEV_OFFSET;
             
@@ -70,12 +70,12 @@ Keyboard::Keyboard(Seat& seat)
                 }
             }
         },
-        .modifiers = [](void *data, wl_keyboard *, uint32_t, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group){
+        .modifiers = [](void *data, wl_keyboard *, uint32_t, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) noexcept {
             auto& self = *reinterpret_cast<Keyboard *>(data);
 
             xkb_state_update_mask(self._state.get(), mods_depressed, mods_latched, mods_locked, 0, 0, group);
         },
-        .repeat_info = [](void *, wl_keyboard *, int32_t, int32_t){
+        .repeat_info = [](void *, wl_keyboard *, int32_t, int32_t) noexcept {
 
         }
     };

@@ -10,7 +10,7 @@ Pointer::Pointer(Seat& seat)
     ,_focus(nullptr)
 {
     static constexpr wl_pointer_listener pointer_listener {
-        .enter = [](void *data, wl_pointer *, uint32_t serial, wl_surface *surface, wl_fixed_t, wl_fixed_t){
+        .enter = [](void *data, wl_pointer *, uint32_t serial, wl_surface *surface, wl_fixed_t, wl_fixed_t) noexcept {
             auto& self = *static_cast<Pointer *>(data);
 
             if (surface) {
@@ -19,7 +19,7 @@ Pointer::Pointer(Seat& seat)
                 wl_pointer_set_cursor(self._pointer.get(), serial, self._cursor_surface.get(), static_cast<int32_t>(self._cursor_image->hotspot_x), static_cast<int32_t>(self._cursor_image->hotspot_y));
             }
         },
-        .leave = [](void *data, wl_pointer *, uint32_t, wl_surface *){
+        .leave = [](void *data, wl_pointer *, uint32_t, wl_surface *) noexcept {
             auto& self = *static_cast<Pointer *>(data);
 
             self._focus = nullptr;

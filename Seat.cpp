@@ -4,7 +4,7 @@ Seat::Seat(Display& display, wl_seat *seat)
     :_display(display), _seat(seat)
 {
     static constexpr wl_seat_listener seat_listener {
-        .capabilities = [](void *data, wl_seat *, uint32_t capabilities){
+        .capabilities = [](void *data, wl_seat *, uint32_t capabilities) noexcept {
             auto& self = *static_cast<Seat *>(data);
 
             if (WL_SEAT_CAPABILITY_KEYBOARD & capabilities) {
@@ -23,7 +23,7 @@ Seat::Seat(Display& display, wl_seat *seat)
                 self._pointer.reset();
             }
         },
-        .name = [](void *, wl_seat *, const char *){
+        .name = [](void *, wl_seat *, const char *) noexcept {
 
         }
     };
