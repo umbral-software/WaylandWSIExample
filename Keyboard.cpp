@@ -29,7 +29,9 @@ Keyboard::Keyboard(Seat& seat)
         },
         .enter = [](void *data, wl_keyboard *, uint32_t, wl_surface *surface, wl_array *){
             auto& self = *reinterpret_cast<Keyboard *>(data);
-            self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
+            if (surface) {
+                self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
+            }
         },
         .leave = [](void *data, wl_keyboard *, uint32_t, wl_surface *){
              auto& self = *reinterpret_cast<Keyboard *>(data);

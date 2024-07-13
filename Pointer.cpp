@@ -13,9 +13,11 @@ Pointer::Pointer(Seat& seat)
         .enter = [](void *data, wl_pointer *, uint32_t serial, wl_surface *surface, wl_fixed_t, wl_fixed_t){
             auto& self = *static_cast<Pointer *>(data);
 
-            self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
+            if (surface) {
+                self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
 
-            wl_pointer_set_cursor(self._pointer.get(), serial, self._cursor_surface.get(), static_cast<int32_t>(self._cursor_image->hotspot_x), static_cast<int32_t>(self._cursor_image->hotspot_y));
+                wl_pointer_set_cursor(self._pointer.get(), serial, self._cursor_surface.get(), static_cast<int32_t>(self._cursor_image->hotspot_x), static_cast<int32_t>(self._cursor_image->hotspot_y));
+            }
         },
         .leave = [](void *data, wl_pointer *, uint32_t, wl_surface *){
             auto& self = *static_cast<Pointer *>(data);
