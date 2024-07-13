@@ -7,7 +7,7 @@
 static constexpr int DEFAULT_CURSOR_SIZE = 16;
 
 static constexpr uint32_t DESIRED_WL_COMPOSITOR_VERSION = 4;
-static constexpr uint32_t DESIRED_WL_SEAT_VERSION = 5;
+static constexpr uint32_t DESIRED_WL_SEAT_VERSION = 7;
 static constexpr uint32_t DESIRED_WL_SHM_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CONTENT_TYPE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_DECORATION_V1_VERSION = 1;
