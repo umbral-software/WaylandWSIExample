@@ -1,6 +1,6 @@
-#include "Display.hpp"
 #include "Renderer.hpp"
-#include "Window.hpp"
+#include "wayland/Display.hpp"
+#include "wayland/Window.hpp"
 
 int main() {
     Display display;

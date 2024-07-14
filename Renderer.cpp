@@ -1,6 +1,6 @@
 #include "Renderer.hpp"
 
-#include "Window.hpp"
+#include "wayland/Window.hpp"
 
 #include <volk.h>
 #include <vulkan/vk_enum_string_helper.h>
