@@ -13,6 +13,20 @@ static constexpr uint32_t DESIRED_WP_CONTENT_TYPE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_DECORATION_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_SHELL_VERSION = 2;
 
+static int get_cursor_size() {
+    const auto xcursor_size_str = getenv("XCURSOR_SIZE");
+    if (!xcursor_size_str) {
+        return DEFAULT_CURSOR_SIZE;
+    }
+
+    const auto cursor_size = atoi(xcursor_size_str);
+    if (!cursor_size) {
+        return DEFAULT_CURSOR_SIZE;
+    }
+
+    return cursor_size;
+}
+
 static short poll_single(int fd, short events, int timeout) {
     pollfd pfd { .fd = fd, .events = events, .revents = 0 };
     if (0 > poll(&pfd, 1, timeout)) {
@@ -81,10 +95,7 @@ Display::Display() {
 
     xdg_wm_base_add_listener(_wm_base.get(), &wm_base_listener, this);
 
-    const auto xcursor_size = getenv("XCURSOR_SIZE");
-    const auto cursor_size = xcursor_size ? atoi(xcursor_size) : DEFAULT_CURSOR_SIZE;
-    _cursor_theme.reset(wl_cursor_theme_load(nullptr, cursor_size, _shm.get()));
-
+    _cursor_theme.reset(wl_cursor_theme_load(nullptr, get_cursor_size(), _shm.get()));
     _xkb_context.reset(xkb_context_new(XKB_CONTEXT_NO_FLAGS));
 }
 
