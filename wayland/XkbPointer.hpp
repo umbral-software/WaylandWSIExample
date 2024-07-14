@@ -5,8 +5,16 @@
 #include <memory>
 
 struct XkbDeleter {
-    void operator()(void *ptr) const noexcept {
-        free(ptr);
+    void operator()(xkb_context *context) const noexcept {
+        xkb_context_unref(context);
+    }
+
+    void operator()(xkb_keymap *keymap) const noexcept {
+        xkb_keymap_unref(keymap);
+    }
+    
+    void operator()(xkb_state *state) const noexcept {
+        xkb_state_unref(state);
     }
 };
 

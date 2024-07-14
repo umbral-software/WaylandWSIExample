@@ -37,6 +37,7 @@ RendererBase::~RendererBase() {
     if (d.instance) {
         vkDestroySurfaceKHR(d.instance, d.surface, nullptr);
         vkDestroyInstance(d.instance, nullptr);
+        volkFinalize();
     }
 }
 
