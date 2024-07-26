@@ -26,4 +26,5 @@ private:
     
     VkExtent2D _swapchain_size;
     uint32_t _image_index;
+    bool _rebuild_required;
 };

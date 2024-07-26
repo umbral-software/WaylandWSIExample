@@ -514,23 +514,31 @@ ImageData& Renderer::image() noexcept {
 }
 
 void Renderer::render() {
+    const auto window_size = _window.size();
+    if (_swapchain_size.width != window_size.first || _swapchain_size.height != window_size.second) {
+        _rebuild_required = true;
+    }
+
+    if (_rebuild_required) {
+        rebuild_swapchain();
+    }
+
     _frame_index = (_frame_index + 1) % d.frame_data.size();
     check_success(vkWaitForFences(d.device, 1, &frame().fence, true, UINT64_MAX));
     const auto acquire_result = vkAcquireNextImageKHR(d.device, d.swapchain, UINT64_MAX, frame().semaphore, nullptr, &_image_index);
 
-    bool swapchain_usable, rebuild_required;
+    bool swapchain_usable;
     switch (acquire_result) {
     case VK_SUCCESS:
         swapchain_usable = true;
-        rebuild_required = false;
         break;
     case VK_SUBOPTIMAL_KHR:
         swapchain_usable = true;
-        rebuild_required = true;
+        _rebuild_required = true;
         break;
     case VK_ERROR_OUT_OF_DATE_KHR:
         swapchain_usable = false;
-        rebuild_required = true;
+        _rebuild_required = true;
         break;
     default:
         throw std::runtime_error(string_VkResult(acquire_result));
@@ -603,16 +611,11 @@ void Renderer::render() {
             break;
         case VK_SUBOPTIMAL_KHR:
         case VK_ERROR_OUT_OF_DATE_KHR:
-            rebuild_required = true;
+            _rebuild_required = true;
             break;
         default:
             throw std::runtime_error(string_VkResult(present_result));
         }
-    }
-
-    const auto window_size = _window.size();
-    if (rebuild_required || _swapchain_size.width != window_size.first || _swapchain_size.height != window_size.second) {
-        rebuild_swapchain();
     }
 }
 
@@ -717,5 +720,7 @@ void Renderer::rebuild_swapchain() {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
         };
         check_success(vkCreateSemaphore(d.device, &semaphore_create_info, nullptr, &image_data.semaphore));
+
+        _rebuild_required = false;
     }
 }
