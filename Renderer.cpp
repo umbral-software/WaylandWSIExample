@@ -2,6 +2,7 @@
 
 #include "wayland/Window.hpp"
 
+#include <glm/glm.hpp>
 #include <volk.h>
 #include <vulkan/vk_enum_string_helper.h>
 
@@ -11,6 +12,16 @@
 #include <fstream>
 
 using namespace std::literals;
+
+struct MatrixUniforms {
+    glm::mat4 modelview;
+    glm::mat4 projection;
+};
+
+struct Vertex {
+    std::array<float, 3> position;
+    std::array<uint8_t, 4> color;
+};
 
 [[maybe_unused]]
 static constexpr float STAGING_PRIORITY = 0.0f;
@@ -22,11 +33,6 @@ static constexpr float NORMAL_PRIORITY = 0.5f;
 static constexpr float HIGH_PRIORITY = 0.75f;
 [[maybe_unused]]
 static constexpr float RENDER_TARGET_PRIORITY = 1.0f;
-
-struct Vertex {
-    std::array<float, 3> position;
-    std::array<uint8_t, 4> color;
-};
 
 static constexpr uint32_t DEFAULT_IMAGE_COUNT = 3;
 
@@ -301,6 +307,26 @@ Renderer::Renderer(Window& window)
 
     vkGetDeviceQueue(d.device, _queue_family_index, 0, &d.queue);
 
+    const VkDescriptorSetLayoutBinding descriptor_set_layout_binding {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+    };
+    const VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 1,
+        .pBindings = &descriptor_set_layout_binding
+    };
+    check_success(vkCreateDescriptorSetLayout(d.device, &descriptor_set_layout_create_info, nullptr, &d.descriptor_set_layout));
+
+    const VkPipelineLayoutCreateInfo pipeline_layout_create_info {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &d.descriptor_set_layout
+    };
+    check_success(vkCreatePipelineLayout(d.device, &pipeline_layout_create_info, nullptr, &d.pipeline_layout));
+
     const VkAttachmentDescription  attachment_desc {
         .format = _surface_format.format,
         .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -336,11 +362,6 @@ Renderer::Renderer(Window& window)
         .pDependencies = &subpass_dependency
     };
     check_success(vkCreateRenderPass(d.device, &render_pass_create_info, nullptr, &d.render_pass));
-
-    const VkPipelineLayoutCreateInfo pipeline_layout_create_info {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-    };
-    check_success(vkCreatePipelineLayout(d.device, &pipeline_layout_create_info, nullptr, &d.pipeline_layout));
 
     const std::vector<uint32_t> vertex_code = load_shader("main.vert");
     const VkShaderModuleCreateInfo vertex_shader_create_info {
@@ -445,17 +466,35 @@ Renderer::Renderer(Window& window)
     };
     check_success(vkCreateGraphicsPipelines(d.device, nullptr, 1, &pipeline_create_info, nullptr, &d.pipeline)); // FIXME: PipelineCache
 
+    const std::array descriptor_pool_sizes {
+        VkDescriptorPoolSize { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1 }
+    };
+    const VkDescriptorPoolCreateInfo descriptor_pool_create_info {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = 1,
+        .poolSizeCount = descriptor_pool_sizes.size(),
+        .pPoolSizes = descriptor_pool_sizes.data()
+    };
+    check_success(vkCreateDescriptorPool(d.device, &descriptor_pool_create_info, nullptr, &d.descriptor_pool));
+    const VkDescriptorSetAllocateInfo descriptor_set_allocate_info {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = d.descriptor_pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &d.descriptor_set_layout
+    };
+    check_success(vkAllocateDescriptorSets(d.device, &descriptor_set_allocate_info, &d.descriptor_set));
+
     const VkBufferCreateInfo index_buffer_create_info {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = sizeof(INDICES),
         .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT
     };
-    const VmaAllocationCreateInfo mappable_allocation_info {
+    const VmaAllocationCreateInfo staging_allocation_info {
         .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, // FIXME: Change to staging-instead bit
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .priority = HIGH_PRIORITY
     };
-    vmaCreateBuffer(d.allocator, &index_buffer_create_info, &mappable_allocation_info, &d.index_buffer, &d.index_allocation, nullptr);
+    vmaCreateBuffer(d.allocator, &index_buffer_create_info, &staging_allocation_info, &d.index_buffer, &d.index_allocation, nullptr);
 
     void *pData;
     vmaMapMemory(d.allocator, d.index_allocation, &pData);
@@ -467,11 +506,38 @@ Renderer::Renderer(Window& window)
         .size = sizeof(VERTICES),
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
     };
-    vmaCreateBuffer(d.allocator, &vertex_buffer_create_info, &mappable_allocation_info, &d.vertex_buffer, &d.vertex_allocation, nullptr);
+    vmaCreateBuffer(d.allocator, &vertex_buffer_create_info, &staging_allocation_info, &d.vertex_buffer, &d.vertex_allocation, nullptr);
     
     vmaMapMemory(d.allocator, d.vertex_allocation, &pData);
     memcpy(pData, &VERTICES, sizeof(VERTICES));
     vmaUnmapMemory(d.allocator, d.vertex_allocation);
+
+    const VkBufferCreateInfo uniform_buffer_create_info {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = NUM_FRAMES_IN_FLIGHT * sizeof(MatrixUniforms),
+        .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+    };
+    const VmaAllocationCreateInfo mappable_allocation_info {
+        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        .priority = NORMAL_PRIORITY
+    };
+    vmaCreateBuffer(d.allocator, &uniform_buffer_create_info, &mappable_allocation_info, &d.uniform_buffer, &d.uniform_allocation, nullptr);
+
+    const VkDescriptorBufferInfo descriptor_buffer_info {
+        .buffer = d.uniform_buffer,
+        .offset = 0,
+        .range = sizeof(MatrixUniforms)
+    };
+    const VkWriteDescriptorSet descriptor_write {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = d.descriptor_set,
+        .dstBinding = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .pBufferInfo = &descriptor_buffer_info
+    };
+    vkUpdateDescriptorSets(d.device, 1, &descriptor_write, 0, nullptr);
 
     for (auto& frame_data : d.frame_data) {
         const VkCommandPoolCreateInfo command_pool_create_info {
@@ -570,10 +636,22 @@ void Renderer::render() {
         };
 
         const VkDeviceSize null_offset = 0;
+        const auto matrix_uniforms_offset = static_cast<uint32_t>(_frame_index * sizeof(MatrixUniforms));
+
+        const MatrixUniforms matrix_uniforms {
+            .modelview = glm::mat4(1.0f),
+            .projection = glm::mat4(1.0f)
+        };
+
+        void *pData;
+        vmaMapMemory(d.allocator, d.uniform_allocation, &pData);
+        memcpy(&reinterpret_cast<MatrixUniforms *>(pData)[_frame_index], &matrix_uniforms, sizeof(MatrixUniforms));
+        vmaUnmapMemory(d.allocator, d.uniform_allocation);
 
         check_success(vkResetCommandPool(d.device, frame().command_pool, 0));
         check_success(vkBeginCommandBuffer(frame().command_buffer, &command_buffer_begin_info));
         vkCmdBeginRenderPass(frame().command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindDescriptorSets(frame().command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, d.pipeline_layout, 0, 1, &d.descriptor_set, 1, &matrix_uniforms_offset);
         vkCmdBindPipeline(frame().command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, d.pipeline);
         vkCmdBindIndexBuffer(frame().command_buffer, d.index_buffer, null_offset, VK_INDEX_TYPE_UINT16);
         vkCmdBindVertexBuffers(frame().command_buffer, 0, 1, &d.vertex_buffer, &null_offset);
