@@ -15,6 +15,8 @@ RendererBase::~RendererBase() {
             vkDestroyFramebuffer(d.device, image_data.framebuffer, nullptr);
             vkDestroyImageView(d.device, image_data.image_view, nullptr);
         }
+        vkDestroyImageView(d.device, d.depth_view, nullptr);
+        vmaDestroyImage(d.allocator, d.depth_image, d.depth_allocation);
         vkDestroySwapchainKHR(d.device, d.swapchain, nullptr);
 
         for (const auto& frame_data : d.frame_data) {

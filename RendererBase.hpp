@@ -57,6 +57,10 @@ protected:
         std::array<FrameData, NUM_FRAMES_IN_FLIGHT> frame_data;
 
         VkSwapchainKHR swapchain;
+        VkImage depth_image;
+        VmaAllocation depth_allocation;
+        VkImageView depth_view;
+
         std::vector<ImageData> image_data;
     } d;
 };
