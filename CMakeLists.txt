@@ -30,7 +30,8 @@ function(add_shader_target target)
         add_custom_command(
             OUTPUT ${binary}
             MAIN_DEPENDENCY ${source}
-            COMMAND Vulkan::glslc ${GLSLC_ARGS} ${source} -o ${binary})
+            COMMAND Vulkan::glslc ${GLSLC_ARGS} ${source} -o ${binary}
+            VERBATIM)
         list(APPEND all_binaries ${binary})
     endforeach()
     add_custom_target(${target} DEPENDS ${all_binaries})
