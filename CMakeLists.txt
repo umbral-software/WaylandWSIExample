@@ -43,7 +43,7 @@ ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/st
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
 set_target_properties(vfighter PROPERTIES CXX_STANDARD 23)
-target_compile_definitions(vfighter PRIVATE VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
+target_compile_definitions(vfighter PRIVATE GLM_FORCE_LEFT_HANDED VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
 target_include_directories(vfighter PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(vfighter Wayland::Client Wayland::Cursor X11::xkbcommon)
 

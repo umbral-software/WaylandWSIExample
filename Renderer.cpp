@@ -2,7 +2,8 @@
 
 #include "wayland/Window.hpp"
 
-#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
 #include <volk.h>
 #include <vulkan/vk_enum_string_helper.h>
 
@@ -40,14 +41,16 @@ static constexpr std::array DESIRED_DEPTH_FORMATS {
     VK_FORMAT_D32_SFLOAT_S8_UINT,
     VK_FORMAT_X8_D24_UNORM_PACK32
 };
+static constexpr float FIELD_OF_VIEW = glm::radians(90.0f);
+static constexpr float NEAR_CLIP_PLANE = 0.01f;
 
 static constexpr std::array<uint16_t, 3> INDICES {{
     0, 1, 2
 }};
 static constexpr std::array<Vertex, 3> VERTICES {{
-    {{ 1.0f,  1.0f, 0.5f}, {   0,   0, 255, 255 }},
-    {{ 0.0f, -1.0f, 0.5f}, {   0, 255,   0, 255 }},
-    {{-1.0f,  1.0f, 0.5f}, { 255,   0,   0, 255 }},
+    {{0.0f,  0.0f, 0.0f}, { 255,   0,   0, 255 }},
+    {{2.0f,  0.0f, 0.0f}, {   0, 255,   0, 255 }},
+    {{1.0f,  1.5f, 0.0f}, {   0,   0, 255, 255 }},
 }};
 
 static constexpr void check_success(VkResult result) {
@@ -682,17 +685,20 @@ void Renderer::render() {
 
         const VkRect2D scissor = { {}, _swapchain_size };
         const VkViewport viewport {
-            .x = 0, .y = 0,
-            .width = static_cast<float>(_swapchain_size.width), .height = static_cast<float>(_swapchain_size.height),
+            .x = 0, .y = static_cast<float>(_swapchain_size.height),
+            .width = static_cast<float>(_swapchain_size.width), .height = -static_cast<float>(_swapchain_size.height),
             .minDepth = 0.0f, .maxDepth = 1.0f
         };
 
         const VkDeviceSize null_offset = 0;
         const auto matrix_uniforms_offset = static_cast<uint32_t>(_frame_index * sizeof(MatrixUniforms));
 
+        const auto aspect = static_cast<float>(_swapchain_size.width) / static_cast<float>(_swapchain_size.height);
+        const auto model = glm::translate(glm::vec3(-1.0f, -0.75f, 0.0f));
+        const auto view = glm::lookAt(glm::vec3(0.0, 0.0, -2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
         const MatrixUniforms matrix_uniforms {
-            .modelview = glm::mat4(1.0f),
-            .projection = glm::mat4(1.0f)
+            .modelview = view * model,
+            .projection = glm::infinitePerspective(FIELD_OF_VIEW / aspect, aspect, NEAR_CLIP_PLANE)
         };
 
         void *pData;
