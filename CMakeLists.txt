@@ -38,14 +38,14 @@ function(add_shader_target target)
 endfunction()
 
 add_executable(vfighter main.cpp vk_mem_alloc.cpp volk.c
-    Common.cpp Renderer.cpp RendererBase.cpp Swapchain.cpp SwapchainBase.cpp
+    vulkan/Common.cpp vulkan/Renderer.cpp vulkan/RendererBase.cpp vulkan/Swapchain.cpp vulkan/SwapchainBase.cpp
     wayland/Display.cpp wayland/Keyboard.cpp wayland/MappableFd.cpp wayland/Pointer.cpp wayland/Seat.cpp wayland/Window.cpp)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
 set_target_properties(vfighter PROPERTIES CXX_STANDARD 23)
 target_compile_definitions(vfighter PRIVATE GLM_FORCE_LEFT_HANDED VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
-target_include_directories(vfighter PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(vfighter PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(vfighter Wayland::Client Wayland::Cursor X11::xkbcommon)
 
 add_shader_target(all_shaders main.frag main.vert)
