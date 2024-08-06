@@ -3,6 +3,7 @@
 #include "Common.hpp"
 #include "wayland/Window.hpp"
 
+#include <glm/gtc/reciprocal.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 #include <volk.h>
@@ -53,6 +54,18 @@ static std::partial_ordering operator<=>(const VkExtent2D& extent, const std::pa
 
 static bool operator==(const VkExtent2D& extent, const std::pair<uint32_t, uint32_t>& pair) noexcept {
     return std::partial_ordering::equivalent == (extent <=> pair);
+}
+
+static glm::mat4 infinitePerspectiveFovReverse(float fovx, float aspect, float zNear) {
+    const float w = glm::cot(0.5f * fovx);
+    const float h = w * aspect;
+    glm::mat4 result = glm::zero<glm::mat4>();
+    result[0][0] = w;
+    result[1][1] = h;
+    result[2][2] = 0.0f;
+    result[2][3] = 1.0f;
+    result[3][2] = zNear;
+    return result;
 }
 
 static std::vector<uint8_t> load_file(std::filesystem::path path) {
@@ -447,7 +460,7 @@ Renderer::Renderer(Window& window)
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = true,
         .depthWriteEnable = true,
-        .depthCompareOp = VK_COMPARE_OP_LESS
+        .depthCompareOp = VK_COMPARE_OP_GREATER
     };
     const VkPipelineColorBlendAttachmentState pipeline_color_blend_attachment_state {
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
@@ -611,7 +624,7 @@ void Renderer::render() {
         const auto swapchain_size = _swapchain.size();
         const std::array clear_values {
             VkClearValue { .color = { .float32 = {0.0f, 0.0f, 0.0f, 0.0f} } },
-            VkClearValue { .depthStencil = { .depth = 1.0f } }
+            VkClearValue { .depthStencil = { .depth = 0.0f } }
         };
         const VkRenderPassBeginInfo render_pass_begin_info {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -632,12 +645,12 @@ void Renderer::render() {
         const VkDeviceSize null_offset = 0;
         const auto matrix_uniforms_offset = static_cast<uint32_t>(_frame_index * sizeof(MatrixUniforms));
 
-        const auto aspect = static_cast<float>(swapchain_size.width) / static_cast<float>(swapchain_size.height);
         const auto model = glm::translate(glm::vec3(-1.0f, -0.75f, 0.0f));
         const auto view = glm::lookAt(glm::vec3(0.0, 0.0, -2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
+        const auto aspect = static_cast<float>(swapchain_size.width) / static_cast<float>(swapchain_size.height);
         const MatrixUniforms matrix_uniforms {
             .modelview = view * model,
-            .projection = glm::infinitePerspective(FIELD_OF_VIEW / aspect, aspect, NEAR_CLIP_PLANE)
+            .projection = infinitePerspectiveFovReverse(FIELD_OF_VIEW, aspect, NEAR_CLIP_PLANE)
         };
 
         void *pData;
