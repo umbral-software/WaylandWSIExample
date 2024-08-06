@@ -93,6 +93,8 @@ Window::Window(Display& display)
     if (!_has_server_decorations) {
         toggle_fullscreen();
     }
+
+    wl_surface_commit(_surface.get());
 }
 
 void Window::keysym(uint32_t keysym, bool, bool, bool alt) noexcept {
