@@ -37,9 +37,9 @@ function(add_shader_target target)
     add_custom_target(${target} DEPENDS ${all_binaries})
 endfunction()
 
-add_executable(vfighter main.cpp vk_mem_alloc.cpp volk.c
+add_executable(vfighter main.cpp MappableFd.cpp vk_mem_alloc.cpp volk.c
     vulkan/Common.cpp vulkan/Renderer.cpp vulkan/RendererBase.cpp vulkan/Swapchain.cpp vulkan/SwapchainBase.cpp
-    wayland/Display.cpp wayland/Keyboard.cpp wayland/MappableFd.cpp wayland/Pointer.cpp wayland/Seat.cpp wayland/Window.cpp)
+    wayland/Display.cpp wayland/Keyboard.cpp  wayland/Pointer.cpp wayland/Seat.cpp wayland/Window.cpp)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
 ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
