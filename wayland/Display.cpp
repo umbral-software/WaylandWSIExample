@@ -95,6 +95,9 @@ Display::Display() {
     };
 
     _display.reset(wl_display_connect(nullptr));
+    if (!_display) {
+        throw std::runtime_error("No wayland compositor detected");
+    }
 
     _registry.reset(wl_display_get_registry(_display.get()));
     wl_registry_add_listener(_registry.get(), &registry_listener, this);
