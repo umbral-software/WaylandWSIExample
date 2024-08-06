@@ -133,12 +133,11 @@ wl_surface *Window::surface() noexcept {
 }
 
 void Window::toggle_fullscreen() noexcept {
-    if (_has_server_decorations) {
-        if (_fullscreen) {
-            xdg_toplevel_unset_fullscreen(_toplevel.get());
-        } else {
-            xdg_toplevel_set_fullscreen(_toplevel.get(), nullptr);
-        }
-        _fullscreen = !_fullscreen;
+    if (!_fullscreen) {
+        xdg_toplevel_set_fullscreen(_toplevel.get(), nullptr);
+        _fullscreen = true;
+    } else if (_has_server_decorations) {
+        xdg_toplevel_unset_fullscreen(_toplevel.get());
+        _fullscreen = false;
     }
 }
