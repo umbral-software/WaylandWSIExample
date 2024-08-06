@@ -13,6 +13,8 @@ public:
     void render();
 
 private:
+    void record_command_buffer();
+private:
     const Window& _window;
 
     VkPhysicalDevice _physical_device;

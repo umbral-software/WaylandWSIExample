@@ -616,60 +616,7 @@ void Renderer::render() {
     _frame_index = (_frame_index + 1) % d.frame_data.size();
     check_success(vkWaitForFences(d.device, 1, &frame().fence, true, UINT64_MAX));
     if (_swapchain.acquire(frame().semaphore)) {
-        const VkCommandBufferBeginInfo command_buffer_begin_info {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-        };
-
-        const auto swapchain_size = _swapchain.size();
-        const std::array clear_values {
-            VkClearValue { .color = { .float32 = {0.0f, 0.0f, 0.0f, 0.0f} } },
-            VkClearValue { .depthStencil = { .depth = 0.0f } }
-        };
-        const VkRenderPassBeginInfo render_pass_begin_info {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = d.render_pass,
-            .framebuffer = _swapchain.image_data().framebuffer,
-            .renderArea = { {0, 0}, swapchain_size },
-            .clearValueCount = clear_values.size(),
-            .pClearValues = clear_values.data()
-        };
-
-        const VkRect2D scissor = { {}, swapchain_size };
-        const VkViewport viewport {
-            .x = 0, .y = static_cast<float>(swapchain_size.height),
-            .width = static_cast<float>(swapchain_size.width), .height = -static_cast<float>(swapchain_size.height),
-            .minDepth = 0.0f, .maxDepth = 1.0f
-        };
-
-        const VkDeviceSize null_offset = 0;
-        const auto matrix_uniforms_offset = static_cast<uint32_t>(_frame_index * sizeof(MatrixUniforms));
-
-        const auto model = glm::translate(glm::vec3(-1.0f, -0.75f, 0.0f));
-        const auto view = glm::lookAt(glm::vec3(0.0, 0.0, -2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
-        const auto aspect = static_cast<float>(swapchain_size.width) / static_cast<float>(swapchain_size.height);
-        const MatrixUniforms matrix_uniforms {
-            .modelview = view * model,
-            .projection = infinitePerspectiveFovReverse(FIELD_OF_VIEW, aspect, NEAR_CLIP_PLANE)
-        };
-
-        void *pData;
-        vmaMapMemory(d.allocator, d.uniform_allocation, &pData);
-        memcpy(&reinterpret_cast<MatrixUniforms *>(pData)[_frame_index], &matrix_uniforms, sizeof(MatrixUniforms));
-        vmaUnmapMemory(d.allocator, d.uniform_allocation);
-
-        check_success(vkResetCommandPool(d.device, frame().command_pool, 0));
-        check_success(vkBeginCommandBuffer(frame().command_buffer, &command_buffer_begin_info));
-        vkCmdBeginRenderPass(frame().command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindDescriptorSets(frame().command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, d.pipeline_layout, 0, 1, &d.descriptor_set, 1, &matrix_uniforms_offset);
-        vkCmdBindPipeline(frame().command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, d.pipeline);
-        vkCmdBindIndexBuffer(frame().command_buffer, d.index_buffer, null_offset, VK_INDEX_TYPE_UINT16);
-        vkCmdBindVertexBuffers(frame().command_buffer, 0, 1, &d.vertex_buffer, &null_offset);
-        vkCmdSetScissor(frame().command_buffer, 0, 1, &scissor);
-        vkCmdSetViewport(frame().command_buffer, 0, 1, &viewport);
-        vkCmdDrawIndexed(frame().command_buffer, 3, 1, 0, 0, 0);
-        vkCmdEndRenderPass(frame().command_buffer);
-        check_success(vkEndCommandBuffer(frame().command_buffer));
+        record_command_buffer();
 
         const VkPipelineStageFlags wait_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         const VkSubmitInfo submit_info {
@@ -689,3 +636,61 @@ void Renderer::render() {
     }
 }
 
+void Renderer::record_command_buffer() {
+    const VkCommandBufferBeginInfo command_buffer_begin_info {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+
+    const auto swapchain_size = _swapchain.size();
+    const std::array clear_values {
+        VkClearValue { .color = { .float32 = {0.0f, 0.0f, 0.0f, 0.0f} } },
+        VkClearValue { .depthStencil = { .depth = 0.0f } }
+    };
+    const VkRenderPassBeginInfo render_pass_begin_info {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = d.render_pass,
+        .framebuffer = _swapchain.image_data().framebuffer,
+        .renderArea = { {0, 0}, swapchain_size },
+        .clearValueCount = clear_values.size(),
+        .pClearValues = clear_values.data()
+    };
+
+    const VkRect2D scissor = { {}, swapchain_size };
+    const VkViewport viewport {
+        .x = 0, .y = static_cast<float>(swapchain_size.height),
+        .width = static_cast<float>(swapchain_size.width), .height = -static_cast<float>(swapchain_size.height),
+        .minDepth = 0.0f, .maxDepth = 1.0f
+    };
+
+    const VkDeviceSize null_offset = 0;
+    const auto matrix_uniforms_offset = static_cast<uint32_t>(_frame_index * sizeof(MatrixUniforms));
+
+    const auto model = glm::translate(glm::vec3(-1.0f, -0.75f, 0.0f));
+    const auto view = glm::lookAt(glm::vec3(0.0, 0.0, -2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
+    const auto aspect = static_cast<float>(swapchain_size.width) / static_cast<float>(swapchain_size.height);
+    const MatrixUniforms matrix_uniforms {
+        .modelview = view * model,
+        .projection = infinitePerspectiveFovReverse(FIELD_OF_VIEW, aspect, NEAR_CLIP_PLANE)
+    };
+
+    void *pData;
+    vmaMapMemory(d.allocator, d.uniform_allocation, &pData);
+    memcpy(&reinterpret_cast<MatrixUniforms *>(pData)[_frame_index], &matrix_uniforms, sizeof(MatrixUniforms));
+    vmaUnmapMemory(d.allocator, d.uniform_allocation);
+
+    check_success(vkResetCommandPool(d.device, frame().command_pool, 0));
+    
+    const auto cb = frame().command_buffer;
+    check_success(vkBeginCommandBuffer(cb, &command_buffer_begin_info));
+    vkCmdBeginRenderPass(cb, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, d.pipeline_layout, 0, 1, &d.descriptor_set, 1, &matrix_uniforms_offset);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, d.pipeline);
+    vkCmdBindIndexBuffer(cb, d.index_buffer, null_offset, VK_INDEX_TYPE_UINT16);
+    vkCmdBindVertexBuffers(cb, 0, 1, &d.vertex_buffer, &null_offset);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+    vkCmdSetViewport(cb, 0, 1, &viewport);
+    vkCmdDrawIndexed(cb, 3, 1, 0, 0, 0);
+    vkCmdEndRenderPass(cb);
+    check_success(vkEndCommandBuffer(cb));
+}
