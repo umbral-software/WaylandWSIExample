@@ -10,6 +10,7 @@ static constexpr uint32_t DESIRED_WL_COMPOSITOR_VERSION = 4;
 static constexpr uint32_t DESIRED_WL_SEAT_VERSION = 7;
 static constexpr uint32_t DESIRED_WL_SHM_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CONTENT_TYPE_V1_VERSION = 1;
+static constexpr uint32_t DESIRED_WP_CURSOR_SHAPE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_DECORATION_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_SHELL_VERSION = 2;
 
@@ -65,6 +66,16 @@ Display::Display() {
                 && version >= DESIRED_WP_CONTENT_TYPE_V1_VERSION)
             {
                 self._content_type_manager.reset(static_cast<wp_content_type_manager_v1 *>(wl_registry_bind(registry, name, &wp_content_type_manager_v1_interface, DESIRED_WP_CONTENT_TYPE_V1_VERSION)));
+            }
+            else if (!strcmp(wp_cursor_shape_manager_v1_interface.name, interface)
+                && version >= DESIRED_WP_CURSOR_SHAPE_V1_VERSION)
+            {
+                self._cursor_shape_manager.reset(static_cast<wp_cursor_shape_manager_v1 *>(wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, DESIRED_WP_CURSOR_SHAPE_V1_VERSION)));
+            }
+            else if (!strcmp(xdg_wm_base_interface.name, interface)
+                && version >= DESIRED_XDG_SHELL_VERSION)
+            {
+                self._wm_base.reset(static_cast<xdg_wm_base *>(wl_registry_bind(registry, name, &xdg_wm_base_interface, DESIRED_XDG_SHELL_VERSION)));
             }
             else if (!strcmp(zxdg_decoration_manager_v1_interface.name, interface)
                 && version >= DESIRED_XDG_DECORATION_V1_VERSION)

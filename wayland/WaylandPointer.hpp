@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wayland-content-type-client-protocol.h"
+#include "wayland-cursor-shape-client-protocol.h"
 #include "wayland-xdg-decoration-client-protocol.h"
 #include "wayland-xdg-shell-client-protocol.h"
 
@@ -59,6 +60,14 @@ struct WaylandDeleter {
 
     void operator()(wp_content_type_v1 *wp_content_type_v1) const noexcept {
         wp_content_type_v1_destroy(wp_content_type_v1);
+    }
+
+    void operator()(wp_cursor_shape_device_v1 *wp_cursor_shape_device_v1) const noexcept {
+        wp_cursor_shape_device_v1_destroy(wp_cursor_shape_device_v1);
+    }
+
+    void operator()(wp_cursor_shape_manager_v1 *wp_cursor_shape_manager_v1) const noexcept {
+        wp_cursor_shape_manager_v1_destroy(wp_cursor_shape_manager_v1);
     }
 
     void operator()(xdg_surface *xdg_surface) const noexcept {

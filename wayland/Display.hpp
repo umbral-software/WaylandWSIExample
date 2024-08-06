@@ -34,6 +34,7 @@ private:
 
     // Optional protocols
     WaylandPointer<wp_content_type_manager_v1> _content_type_manager; 
+    WaylandPointer<wp_cursor_shape_manager_v1> _cursor_shape_manager;
     WaylandPointer<zxdg_decoration_manager_v1> _decoration_manager;
 
     WaylandPointer<wl_cursor_theme> _cursor_theme;

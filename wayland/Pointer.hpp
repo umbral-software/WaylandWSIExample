@@ -24,4 +24,6 @@ private:
     
     wl_cursor_image *_cursor_image;
     WaylandPointer<wl_surface> _cursor_surface;
+
+    WaylandPointer<wp_cursor_shape_device_v1> _cursor_shape_device;
 };

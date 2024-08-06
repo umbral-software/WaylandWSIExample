@@ -16,7 +16,11 @@ Pointer::Pointer(Seat& seat)
             if (surface) {
                 self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
 
-                wl_pointer_set_cursor(self._pointer.get(), serial, self._cursor_surface.get(), static_cast<int32_t>(self._cursor_image->hotspot_x), static_cast<int32_t>(self._cursor_image->hotspot_y));
+                if (self._cursor_shape_device) {
+                    wp_cursor_shape_device_v1_set_shape(self._cursor_shape_device.get(), serial, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_WAIT);
+                } else {
+                    wl_pointer_set_cursor(self._pointer.get(), serial, self._cursor_surface.get(), static_cast<int32_t>(self._cursor_image->hotspot_x), static_cast<int32_t>(self._cursor_image->hotspot_y));
+                }
             }
         },
         .leave = [](void *data, wl_pointer *, uint32_t, wl_surface *) noexcept {
@@ -44,4 +48,8 @@ Pointer::Pointer(Seat& seat)
     _cursor_surface.reset(wl_compositor_create_surface(_display._compositor.get()));
     wl_surface_attach(_cursor_surface.get(), wl_cursor_image_get_buffer(_cursor_image), 0, 0);
     wl_surface_commit(_cursor_surface.get());
+
+    if (_display._cursor_shape_manager) {
+        _cursor_shape_device.reset(wp_cursor_shape_manager_v1_get_pointer(_display._cursor_shape_manager.get(), _pointer.get()));
+    }
 }
