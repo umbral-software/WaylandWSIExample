@@ -1,13 +1,12 @@
 #include "Renderer.hpp"
 
+#include "Common.hpp"
 #include "wayland/Window.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 #include <volk.h>
-#include <vulkan/vk_enum_string_helper.h>
 
-#include <algorithm>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -24,23 +23,6 @@ struct Vertex {
     std::array<uint8_t, 4> color;
 };
 
-[[maybe_unused]]
-static constexpr float STAGING_PRIORITY = 0.0f;
-[[maybe_unused]]
-static constexpr float LOW_PRIORITY = 0.25f;
-[[maybe_unused]]
-static constexpr float NORMAL_PRIORITY = 0.5f;
-[[maybe_unused]]
-static constexpr float HIGH_PRIORITY = 0.75f;
-[[maybe_unused]]
-static constexpr float RENDER_TARGET_PRIORITY = 1.0f;
-
-static constexpr uint32_t DEFAULT_IMAGE_COUNT = 3;
-static constexpr std::array DESIRED_DEPTH_FORMATS {
-    VK_FORMAT_D32_SFLOAT,
-    VK_FORMAT_D32_SFLOAT_S8_UINT,
-    VK_FORMAT_X8_D24_UNORM_PACK32
-};
 static constexpr float FIELD_OF_VIEW = glm::radians(90.0f);
 static constexpr float NEAR_CLIP_PLANE = 0.01f;
 
@@ -53,10 +35,24 @@ static constexpr std::array<Vertex, 3> VERTICES {{
     {{1.0f,  1.5f, 0.0f}, {   0,   0, 255, 255 }},
 }};
 
-static constexpr void check_success(VkResult result) {
-    if (result) {
-        throw std::runtime_error(string_VkResult(result));
+static std::partial_ordering operator<=>(const VkExtent2D& extent, const std::pair<uint32_t, uint32_t>& pair) noexcept {
+    const std::weak_ordering width_comparison = extent.width <=> pair.first;
+    const std::weak_ordering height_comparison = extent.height <=> pair.second;
+
+    if (width_comparison == height_comparison) {
+        return width_comparison;
     }
+    if (width_comparison == std::weak_ordering::equivalent) {
+        return height_comparison;
+    }
+    if (height_comparison == std::weak_ordering::equivalent) {
+        return width_comparison;
+    }
+    return std::partial_ordering::unordered;
+}
+
+static bool operator==(const VkExtent2D& extent, const std::pair<uint32_t, uint32_t>& pair) noexcept {
+    return std::partial_ordering::equivalent == (extent <=> pair);
 }
 
 static std::vector<uint8_t> load_file(std::filesystem::path path) {
@@ -104,40 +100,6 @@ static std::pair<VkPhysicalDevice, uint32_t> select_device_and_queue(VkInstance 
     }
 
     throw std::runtime_error("No supported device and queue");
-}
-
-static VkFormat select_depth_format(VkPhysicalDevice physical_device) {
-    for (const auto format : DESIRED_DEPTH_FORMATS) {
-        VkFormatProperties format_props;
-        vkGetPhysicalDeviceFormatProperties(physical_device, format, &format_props);
-        if (format_props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            return format;
-        }
-    }
-
-    throw std::runtime_error("No supported depth format");
-}
-
-static VkSurfaceFormatKHR select_surface_format(VkPhysicalDevice physical_device, VkSurfaceKHR surface) {
-    uint32_t num_formats;
-    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &num_formats, nullptr));
-    const auto surface_formats = std::make_unique_for_overwrite<VkSurfaceFormatKHR[]>(num_formats);
-    check_success(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &num_formats, surface_formats.get()));
-
-    for (uint32_t i = 0; i < num_formats; ++i) {
-        const auto& surface_format = surface_formats[i];
-        if (surface_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-            switch (surface_format.format) {
-            case VK_FORMAT_R8G8B8A8_SRGB:
-            case VK_FORMAT_B8G8R8A8_SRGB:
-                return surface_format;
-            default:
-                break;
-            }
-        }
-    }
-
-    throw std::runtime_error("No supported surface format");
 }
 
 Renderer::Renderer(Window& window)
@@ -195,9 +157,6 @@ Renderer::Renderer(Window& window)
     check_success(vkCreateWaylandSurfaceKHR(d.instance, &surface_create_info, nullptr, &d.surface));
 
     std::tie(_physical_device, _queue_family_index) = select_device_and_queue(d.instance, d.surface);
-
-    _surface_format = select_surface_format(_physical_device, d.surface);
-    _depth_format = select_depth_format(_physical_device);
 
     uint32_t num_device_extensions;
     check_success(vkEnumerateDeviceExtensionProperties(_physical_device, nullptr, &num_device_extensions, nullptr));
@@ -325,8 +284,9 @@ Renderer::Renderer(Window& window)
         .vulkanApiVersion = application_info.apiVersion
     };
     check_success(vmaCreateAllocator(&allocator_create_info, &d.allocator));
+    _swapchain.init(d.device, d.allocator, d.surface, _physical_device);
 
-    vkGetDeviceQueue(d.device, _queue_family_index, 0, &d.queue);
+    vkGetDeviceQueue(d.device, _queue_family_index, 0, &_queue);
 
     const VkDescriptorSetLayoutBinding descriptor_set_layout_binding {
         .binding = 0,
@@ -350,7 +310,7 @@ Renderer::Renderer(Window& window)
 
     const std::array attachment_descs {
         VkAttachmentDescription {
-            .format = _surface_format.format,
+            .format = _swapchain.format(),
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -358,7 +318,7 @@ Renderer::Renderer(Window& window)
             .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
         },
         VkAttachmentDescription {
-            .format = _depth_format,
+            .format = _swapchain.depth_format(),
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -621,55 +581,34 @@ Renderer::Renderer(Window& window)
         check_success(vkCreateSemaphore(d.device, &semaphore_create_info, nullptr, &frame_data.semaphore));
     }
     _frame_index = d.frame_data.size();
+}
 
-    rebuild_swapchain();
+Renderer::~Renderer() {
+    if (d.device) {
+        wait_all_fences();
+        _swapchain.destroy(true);
+    }
 }
 
 FrameData& Renderer::frame() noexcept {
     return d.frame_data[_frame_index];
 }
 
-ImageData& Renderer::image() noexcept {
-    return d.image_data[_image_index];
-}
-
 void Renderer::render() {
-    const auto window_size = _window.size();
-    if (_swapchain_size.width != window_size.first || _swapchain_size.height != window_size.second) {
-        _rebuild_required = true;
-    }
-
-    if (_rebuild_required) {
-        rebuild_swapchain();
+    if (_swapchain.rebuild_required() || _window.size() != _swapchain.size()) {
+        check_success(wait_all_fences()); // Can this be reduced?
+        _swapchain.rebuild(_window.size(), d.render_pass);
     }
 
     _frame_index = (_frame_index + 1) % d.frame_data.size();
     check_success(vkWaitForFences(d.device, 1, &frame().fence, true, UINT64_MAX));
-    const auto acquire_result = vkAcquireNextImageKHR(d.device, d.swapchain, UINT64_MAX, frame().semaphore, nullptr, &_image_index);
-
-    bool swapchain_usable;
-    switch (acquire_result) {
-    case VK_SUCCESS:
-        swapchain_usable = true;
-        break;
-    case VK_SUBOPTIMAL_KHR:
-        swapchain_usable = true;
-        _rebuild_required = true;
-        break;
-    case VK_ERROR_OUT_OF_DATE_KHR:
-        swapchain_usable = false;
-        _rebuild_required = true;
-        break;
-    default:
-        throw std::runtime_error(string_VkResult(acquire_result));
-    }
-
-    if (swapchain_usable) {
+    if (_swapchain.acquire(frame().semaphore)) {
         const VkCommandBufferBeginInfo command_buffer_begin_info {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
         };
 
+        const auto swapchain_size = _swapchain.size();
         const std::array clear_values {
             VkClearValue { .color = { .float32 = {0.0f, 0.0f, 0.0f, 0.0f} } },
             VkClearValue { .depthStencil = { .depth = 1.0f } }
@@ -677,23 +616,23 @@ void Renderer::render() {
         const VkRenderPassBeginInfo render_pass_begin_info {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
             .renderPass = d.render_pass,
-            .framebuffer = image().framebuffer,
-            .renderArea = { {0, 0}, _swapchain_size },
+            .framebuffer = _swapchain.image_data().framebuffer,
+            .renderArea = { {0, 0}, swapchain_size },
             .clearValueCount = clear_values.size(),
             .pClearValues = clear_values.data()
         };
 
-        const VkRect2D scissor = { {}, _swapchain_size };
+        const VkRect2D scissor = { {}, swapchain_size };
         const VkViewport viewport {
-            .x = 0, .y = static_cast<float>(_swapchain_size.height),
-            .width = static_cast<float>(_swapchain_size.width), .height = -static_cast<float>(_swapchain_size.height),
+            .x = 0, .y = static_cast<float>(swapchain_size.height),
+            .width = static_cast<float>(swapchain_size.width), .height = -static_cast<float>(swapchain_size.height),
             .minDepth = 0.0f, .maxDepth = 1.0f
         };
 
         const VkDeviceSize null_offset = 0;
         const auto matrix_uniforms_offset = static_cast<uint32_t>(_frame_index * sizeof(MatrixUniforms));
 
-        const auto aspect = static_cast<float>(_swapchain_size.width) / static_cast<float>(_swapchain_size.height);
+        const auto aspect = static_cast<float>(swapchain_size.width) / static_cast<float>(swapchain_size.height);
         const auto model = glm::translate(glm::vec3(-1.0f, -0.75f, 0.0f));
         const auto view = glm::lookAt(glm::vec3(0.0, 0.0, -2.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
         const MatrixUniforms matrix_uniforms {
@@ -728,169 +667,12 @@ void Renderer::render() {
             .commandBufferCount = 1,
             .pCommandBuffers = &frame().command_buffer,
             .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &image().semaphore
+            .pSignalSemaphores = &_swapchain.image_data().semaphore
         };
         check_success(vkResetFences(d.device, 1, &frame().fence));
-        check_success(vkQueueSubmit(d.queue, 1, &submit_info, frame().fence));
+        check_success(vkQueueSubmit(_queue, 1, &submit_info, frame().fence));
 
-        const VkPresentInfoKHR present_info {
-            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &image().semaphore,
-            .swapchainCount = 1,
-            .pSwapchains = &d.swapchain,
-            .pImageIndices = &_image_index
-        };
-        const auto present_result = vkQueuePresentKHR(d.queue, &present_info);
-        switch (present_result) {
-        case VK_SUCCESS:
-            break;
-        case VK_SUBOPTIMAL_KHR:
-        case VK_ERROR_OUT_OF_DATE_KHR:
-            _rebuild_required = true;
-            break;
-        default:
-            throw std::runtime_error(string_VkResult(present_result));
-        }
+        _swapchain.present(_queue);
     }
 }
 
-void Renderer::rebuild_swapchain() {
-    const VkSurfacePresentModeEXT present_mode {
-        .sType = VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT,
-        .presentMode = VK_PRESENT_MODE_FIFO_KHR // Always supported
-    };
-    const VkPhysicalDeviceSurfaceInfo2KHR surface_info {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
-        .pNext = &present_mode,
-        .surface = d.surface
-    };
-    VkSurfaceCapabilities2KHR surface_caps2 {
-        .sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR,
-    };
-    check_success(vkGetPhysicalDeviceSurfaceCapabilities2KHR(_physical_device, &surface_info, &surface_caps2));
-
-    auto image_count = std::max(surface_caps2.surfaceCapabilities.minImageCount + 1, DEFAULT_IMAGE_COUNT);
-    if (surface_caps2.surfaceCapabilities.maxImageCount) {
-        image_count = std::max(image_count, surface_caps2.surfaceCapabilities.maxImageCount);
-    }
-    
-    VkCompositeAlphaFlagBitsKHR compositeAlpha;
-    if (surface_caps2.surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) {
-        compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    } else if (surface_caps2.surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
-        compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
-    } else {
-        throw std::runtime_error("No supported composite alpha");
-    }
-
-    const auto window_size = _window.size();
-
-    check_success(wait_all_fences());
-
-    // FIXME: This is duplicating the code in ~RendererBase();
-    vkDestroyImageView(d.device, d.depth_view, nullptr);
-    vmaDestroyImage(d.allocator, d.depth_image, d.depth_allocation);
-    for (auto& image_data : d.image_data) {
-        vkDestroySemaphore(d.device, image_data.semaphore, nullptr);
-        vkDestroyFramebuffer(d.device, image_data.framebuffer, nullptr);
-        vkDestroyImageView(d.device, image_data.image_view, nullptr);
-    }
-    d.image_data.clear();
-
-    _swapchain_size = {
-        std::clamp(window_size.first, surface_caps2.surfaceCapabilities.minImageExtent.width, surface_caps2.surfaceCapabilities.maxImageExtent.width),
-        std::clamp(window_size.second, surface_caps2.surfaceCapabilities.minImageExtent.height, surface_caps2.surfaceCapabilities.maxImageExtent.height),
-    };
-
-    const VkSwapchainCreateInfoKHR swapchain_create_info {
-        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .surface = d.surface,
-        .minImageCount = image_count,
-        .imageFormat = _surface_format.format,
-        .imageColorSpace = _surface_format.colorSpace,
-        .imageExtent = _swapchain_size,
-        .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .preTransform = surface_caps2.surfaceCapabilities.currentTransform,
-        .compositeAlpha = compositeAlpha,
-        .presentMode = present_mode.presentMode,
-        .clipped = true,
-        .oldSwapchain = d.swapchain
-    };
-    check_success(vkCreateSwapchainKHR(d.device, &swapchain_create_info, nullptr, &d.swapchain));
-    vkDestroySwapchainKHR(d.device, swapchain_create_info.oldSwapchain, nullptr);
-
-    const VkImageCreateInfo depth_image_create_info {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .imageType = VK_IMAGE_TYPE_2D,
-        .format = _depth_format,
-        .extent = { _swapchain_size.width, _swapchain_size.height, 1 },
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-    };
-    const VmaAllocationCreateInfo depth_image_allocate_info {
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        .priority = RENDER_TARGET_PRIORITY
-    };
-    vmaCreateImage(d.allocator, &depth_image_create_info, &depth_image_allocate_info, &d.depth_image, &d.depth_allocation, nullptr);
-
-    const VkImageViewCreateInfo depth_view_create_info {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = d.depth_image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = _depth_format,
-        .subresourceRange = { 
-            VK_IMAGE_ASPECT_DEPTH_BIT, 
-            0, 1, 
-            0, 1
-        }
-    };
-    check_success(vkCreateImageView(d.device, &depth_view_create_info, nullptr, &d.depth_view));
-
-    uint32_t num_images;
-    check_success(vkGetSwapchainImagesKHR(d.device, d.swapchain, &num_images, nullptr));
-    const auto images = std::make_unique_for_overwrite<VkImage[]>(num_images);
-    check_success(vkGetSwapchainImagesKHR(d.device, d.swapchain, &num_images, images.get()));
-
-    d.image_data.resize(num_images);
-    for (uint32_t i = 0; i < num_images; ++i) {
-        auto& image_data = d.image_data[i];
-        image_data.image = images[i];
-
-        const VkImageViewCreateInfo image_view_create_info {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = image_data.image,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = _surface_format.format,
-            .subresourceRange = { 
-                VK_IMAGE_ASPECT_COLOR_BIT, 
-                0, 1, 
-                0, 1
-            }
-        };
-        check_success(vkCreateImageView(d.device, &image_view_create_info, nullptr, &image_data.image_view));
-
-        const std::array attachments { image_data.image_view, d.depth_view };
-        const VkFramebufferCreateInfo framebuffer_create_info {
-            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-            .renderPass = d.render_pass,
-            .attachmentCount = attachments.size(),
-            .pAttachments = attachments.data(),
-            .width = _swapchain_size.width,
-            .height = _swapchain_size.height,
-            .layers = 1
-        };
-        check_success(vkCreateFramebuffer(d.device, &framebuffer_create_info, nullptr, &image_data.framebuffer));
-
-        const VkSemaphoreCreateInfo semaphore_create_info {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
-        };
-        check_success(vkCreateSemaphore(d.device, &semaphore_create_info, nullptr, &image_data.semaphore));
-
-        _rebuild_required = false;
-    }
-}

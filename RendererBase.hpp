@@ -1,11 +1,10 @@
 #pragma once
 
-#include <vk_mem_alloc.h>
+#include "Swapchain.hpp"
 
 #include <array>
-#include <vector>
 
-static constexpr size_t NUM_FRAMES_IN_FLIGHT = 2;
+#define NUM_FRAMES_IN_FLIGHT 2
 
 struct FrameData {
     VkCommandPool command_pool;
@@ -14,14 +13,6 @@ struct FrameData {
     VkFence fence;
     VkSemaphore semaphore;
 };
-
-struct ImageData {
-    VkImage image;
-    VkImageView image_view;
-    VkFramebuffer framebuffer;
-    VkSemaphore semaphore;
-};
-
 
 class RendererBase {
 protected:
@@ -41,7 +32,6 @@ protected:
         
         VkDevice device;
         VmaAllocator allocator;
-        VkQueue queue;
 
         VkDescriptorSetLayout descriptor_set_layout;
         VkPipelineLayout pipeline_layout;
@@ -55,12 +45,7 @@ protected:
         VmaAllocation index_allocation, vertex_allocation, uniform_allocation;
 
         std::array<FrameData, NUM_FRAMES_IN_FLIGHT> frame_data;
-
-        VkSwapchainKHR swapchain;
-        VkImage depth_image;
-        VmaAllocation depth_allocation;
-        VkImageView depth_view;
-
-        std::vector<ImageData> image_data;
     } d;
+
+    Swapchain _swapchain;
 };
