@@ -17,7 +17,7 @@ Pointer::Pointer(Seat& seat)
                 self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
 
                 if (self._cursor_shape_device) {
-                    wp_cursor_shape_device_v1_set_shape(self._cursor_shape_device.get(), serial, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_WAIT);
+                    wp_cursor_shape_device_v1_set_shape(self._cursor_shape_device.get(), serial, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
                 } else {
                     wl_pointer_set_cursor(self._pointer.get(), serial, self._cursor_surface.get(), static_cast<int32_t>(self._cursor_image->hotspot_x), static_cast<int32_t>(self._cursor_image->hotspot_y));
                 }
