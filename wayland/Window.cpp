@@ -15,10 +15,10 @@ Window::Window(Display& display)
         .configure = [](void *data, xdg_surface *surface, uint32_t serial) noexcept {
             auto& self = *static_cast<Window *>(data);
             xdg_surface_ack_configure(surface, serial);
-            self._actual_size = {
-                std::max(DEFAULT_WIDTH, self._desired_size.first),
-                std::max(DEFAULT_HEIGHT, self._desired_size.second)
-            };
+            if (self._desired_size.first && self._desired_size.second) {
+                self._actual_size = self._desired_size;
+            }
+            self._desired_size = { 0, 0 };
         }
     };
 
