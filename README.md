@@ -30,6 +30,7 @@ Also required to build, but not used:
 * C/C++ compiler (tested with clang++ 18)
 * CMake
 * [Extra Cmake Modules](https://api.kde.org/frameworks/extra-cmake-modules/html/index.html) by KDE
+* GLM headers
 * Vulkan SDK
   * Vulkan headers
   * VMA headers
