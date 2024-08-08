@@ -1,4 +1,4 @@
-![Build](https://github.com/umbral-software/WaylandWSIExample/workflows/cmake-single-platform.yml/badge.svg)
+![Build](https://github.com/umbral-software/WaylandWSIExample/actions/workflows/cmake-single-platform.yml/badge.svg)
 
 # Wayland-Vulkan WSI Example
 
