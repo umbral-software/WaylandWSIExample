@@ -23,7 +23,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install Dependencies
-      run: sudo apt-get install extra-cmake-modules glslc libvulkan-dev libvulkan-memory-allocator-dev libvulkan-volk-dev libwayland-dev libx11-dev libxkbcommon-dev wayland-protocols
+      run: sudo apt-get install extra-cmake-modules glslc libvulkan-dev libvulkan-memory-allocator-dev libvulkan-volk-dev libwayland-dev libx11-dev libxkbcommon-dev vulkan-utility-libraries-dev wayland-protocols
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
