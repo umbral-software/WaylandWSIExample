@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(vfighter)
+project(WaylandExample)
 
 find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
@@ -37,18 +37,18 @@ function(add_shader_target target)
     add_custom_target(${target} DEPENDS ${all_binaries})
 endfunction()
 
-add_executable(vfighter main.cpp MappableFd.cpp vk_mem_alloc.cpp volk.c
+add_executable(wayland_example main.cpp MappableFd.cpp vk_mem_alloc.cpp volk.c
     vulkan/Common.cpp vulkan/Renderer.cpp vulkan/RendererBase.cpp vulkan/Swapchain.cpp vulkan/SwapchainBase.cpp
     wayland/Display.cpp wayland/Keyboard.cpp  wayland/Pointer.cpp wayland/Seat.cpp wayland/Window.cpp)
-ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
-ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
-ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/staging/cursor-shape/cursor-shape-v1.xml BASENAME cursor-shape)
-ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/unstable/tablet/tablet-unstable-v2.xml BASENAME tablet) # dependency of cursor-shape
-ecm_add_wayland_client_protocol(vfighter PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
-set_target_properties(vfighter PROPERTIES CXX_STANDARD 23)
-target_compile_definitions(vfighter PRIVATE GLM_FORCE_LEFT_HANDED VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
-target_include_directories(vfighter PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(vfighter Wayland::Client Wayland::Cursor X11::xkbcommon)
+ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
+ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
+ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/staging/cursor-shape/cursor-shape-v1.xml BASENAME cursor-shape)
+ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/unstable/tablet/tablet-unstable-v2.xml BASENAME tablet) # dependency of cursor-shape
+ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
+set_target_properties(wayland_example PROPERTIES CXX_STANDARD 23)
+target_compile_definitions(wayland_example PRIVATE GLM_FORCE_LEFT_HANDED VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
+target_include_directories(wayland_example PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(wayland_example Wayland::Client Wayland::Cursor X11::xkbcommon)
 
 add_shader_target(all_shaders main.frag main.vert)
-add_dependencies(vfighter all_shaders)
+add_dependencies(wayland_example all_shaders)

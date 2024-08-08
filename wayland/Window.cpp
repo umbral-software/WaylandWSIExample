@@ -6,7 +6,7 @@
 
 static constexpr uint32_t DEFAULT_HEIGHT = 600;
 static constexpr uint32_t DEFAULT_WIDTH = 800;
-static constexpr char WINDOW_TITLE[] = "vfighter";
+static constexpr char WINDOW_TITLE[] = "Wayland Example";
 
 Window::Window(Display& display)
     :_display(display)
