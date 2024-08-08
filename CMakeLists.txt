@@ -23,10 +23,13 @@ elseif(${CMAKE_BUILD_TYPE} STREQUAL "MinSizeRel")
 endif()
 
 function(add_shader_target target)
+    set(outdir ${CMAKE_CURRENT_BINARY_DIR}/shaders)
+    file(MAKE_DIRECTORY ${outdir})
+
     set(${all_binaries} "")
     foreach(shader ${ARGN})
         set(source ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${shader})
-        set(binary ${CMAKE_CURRENT_BINARY_DIR}/shaders/${shader}.spv)
+        set(binary ${outdir}/${shader}.spv)
         add_custom_command(
             OUTPUT ${binary}
             MAIN_DEPENDENCY ${source}
