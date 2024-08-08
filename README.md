@@ -1,3 +1,5 @@
+![Build](https://github.com/github/umbral-software/WaylandWSIExample/workflows/cmake-single-platform.yml/badge.svg)
+
 # Wayland-Vulkan WSI Example
 
 An example Wayland backend for Vulkan projects.
