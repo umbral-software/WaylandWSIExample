@@ -25,7 +25,6 @@ Also required to build, but not used:
 
 * No client side decoration support, only fullscreen is suppported if XDG Decoration is not provided by the compositor
 * No support for animated cursors when Cursor Shape is not supported
-* Build-time requirement on X11 headers/library being present
 
 ## Dependencies
 
@@ -33,6 +32,7 @@ Also required to build, but not used:
 * CMake
 * [Extra Cmake Modules](https://api.kde.org/frameworks/extra-cmake-modules/html/index.html) by KDE
 * GLM headers
+* pkg-config executable
 * Vulkan SDK
   * Vulkan headers
   * VMA headers
@@ -48,7 +48,6 @@ Also required to build, but not used:
   * unstable/xdg-decoration
 * Wayland Scanner executable
 * XKBCommon headers/library
-* X11 headers/library
 
 ## Testing
 
@@ -77,5 +76,5 @@ This project is licensed under the MIT License - see the LICENSE.md file for det
 
 ## Acknowledgments
 
-Members of the [Vulkan Discord](https://www.discord.gg/vulkan) for driving me insane with their questions to the point I wrote this project
-#wayland on [OFTC](https://www.oftc.net/) IRC for their help in understanding the protocol
+* Members of the [Vulkan Discord](https://www.discord.gg/vulkan) for driving me insane with their questions to the point I wrote this project
+* #wayland on [OFTC](https://www.oftc.net/) IRC for their help in understanding the protocol
