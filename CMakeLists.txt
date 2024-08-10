@@ -4,11 +4,12 @@ project(WaylandExample)
 find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 
+find_package(PkgConfig REQUIRED)
 find_package(Vulkan REQUIRED COMPONENTS glslc)
 find_package(Wayland REQUIRED COMPONENTS Client Cursor)
 find_package(WaylandProtocols REQUIRED)
 find_package(WaylandScanner REQUIRED)
-find_package(X11 REQUIRED COMPONENTS xkbcommon)
+pkg_check_modules(XKB REQUIRED IMPORTED_TARGET xkbcommon)
 
 set(GLSLC_ARGS "--target-env=vulkan1.3" CACHE STRING "Additional arguments for glslc")
 
@@ -51,7 +52,7 @@ ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATA
 set_target_properties(wayland_example PROPERTIES CXX_STANDARD 23)
 target_compile_definitions(wayland_example PRIVATE GLM_FORCE_LEFT_HANDED VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
 target_include_directories(wayland_example PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(wayland_example Wayland::Client Wayland::Cursor X11::xkbcommon)
+target_link_libraries(wayland_example PkgConfig::XKB Wayland::Client Wayland::Cursor)
 
 add_shader_target(all_shaders main.frag main.vert)
 add_dependencies(wayland_example all_shaders)
