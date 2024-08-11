@@ -21,7 +21,6 @@ Keyboard::Keyboard(Seat& seat)
             switch (format) {
             case WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1:
                 self._keymap.reset(xkb_keymap_new_from_buffer(self._display._xkb_context.get(), static_cast<const char *>(file.map()), size, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS));
-                self._state.reset(xkb_state_new(self._keymap.get()));
                 break;
             default:
                 break;
@@ -31,17 +30,21 @@ Keyboard::Keyboard(Seat& seat)
             auto& self = *reinterpret_cast<Keyboard *>(data);
             if (surface) {
                 self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
+
+                self._state.reset(xkb_state_new(self._keymap.get()));
             }
         },
         .leave = [](void *data, wl_keyboard *, uint32_t, wl_surface *) noexcept {
-             auto& self = *reinterpret_cast<Keyboard *>(data);
+            auto& self = *reinterpret_cast<Keyboard *>(data);
+
+            self._state.reset();
             self._focus = nullptr;           
         },
         .key = [](void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t key, uint32_t state) noexcept {
             auto& self = *reinterpret_cast<Keyboard *>(data);
             const auto xkb_key = key + XKB_EVDEV_OFFSET;
             
-            if (self._focus) {
+            if (self._focus && self._state) {
                 switch (state) {
                 case WL_KEYBOARD_KEY_STATE_PRESSED: {
                     const xkb_keysym_t *syms;
