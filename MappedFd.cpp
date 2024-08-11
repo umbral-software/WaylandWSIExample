@@ -1,4 +1,4 @@
-#include "MappableFd.hpp"
+#include "MappedFd.hpp"
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -6,14 +6,14 @@
 
 static constexpr int BAD_FD = -1;
 
-MappableFd::MappableFd(int fd, size_t size)
+MappedFd::MappedFd(int fd, size_t size)
 {
     _fd = fd;
     _size = size;
     _mapping = mmap(nullptr, _size, PROT_WRITE, MAP_PRIVATE, _fd, 0);
 }
 
-MappableFd::MappableFd(MappableFd&& other) noexcept {
+MappedFd::MappedFd(MappedFd&& other) noexcept {
     _fd = other._fd;
     _size = other._size;
     _mapping = other._mapping;
@@ -23,7 +23,7 @@ MappableFd::MappableFd(MappableFd&& other) noexcept {
     other._mapping = nullptr;
 }
 
-MappableFd::~MappableFd() {
+MappedFd::~MappedFd() {
     if (_mapping) {
         munmap(_mapping, _size);
     }
@@ -33,7 +33,7 @@ MappableFd::~MappableFd() {
     }
 }
 
-MappableFd& MappableFd::operator=(MappableFd&& other) noexcept {
+MappedFd& MappedFd::operator=(MappedFd&& other) noexcept {
     if (_mapping) {
         munmap(_mapping, _size);
     }
@@ -53,7 +53,7 @@ MappableFd& MappableFd::operator=(MappableFd&& other) noexcept {
     return *this;
 }
 
-int MappableFd::fd() noexcept { return _fd; }
-void *MappableFd::map() noexcept { return _mapping; }
-const void *MappableFd::map() const noexcept { return _mapping; }
-size_t MappableFd::size() const noexcept { return _size; }
+int MappedFd::fd() noexcept { return _fd; }
+void *MappedFd::map() noexcept { return _mapping; }
+const void *MappedFd::map() const noexcept { return _mapping; }
+size_t MappedFd::size() const noexcept { return _size; }
