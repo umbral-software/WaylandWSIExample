@@ -25,6 +25,7 @@ Keyboard::Keyboard(Seat& seat)
             }
             default:
                 std::fprintf(stderr, "Unknown keymap type %d\n", format);
+                if (fd >= 0) close(fd);
                 break;
             }
         },
