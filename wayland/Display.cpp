@@ -1,10 +1,11 @@
 #include "Display.hpp"
 
+#include "cursor/shape/ShapeCursorManager.hpp"
+#include "cursor/theme/ThemeCursorManager.hpp"
+
 #include <poll.h>
 
 #include <cstring>
-
-static constexpr int DEFAULT_CURSOR_SIZE = 16;
 
 static constexpr uint32_t DESIRED_WL_COMPOSITOR_VERSION = 4;
 static constexpr uint32_t DESIRED_WL_SEAT_VERSION = 7;
@@ -13,20 +14,6 @@ static constexpr uint32_t DESIRED_WP_CONTENT_TYPE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CURSOR_SHAPE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_DECORATION_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_SHELL_VERSION = 2;
-
-static int get_cursor_size() {
-    const auto xcursor_size_str = getenv("XCURSOR_SIZE");
-    if (!xcursor_size_str) {
-        return DEFAULT_CURSOR_SIZE;
-    }
-
-    const auto cursor_size = atoi(xcursor_size_str);
-    if (!cursor_size) {
-        return DEFAULT_CURSOR_SIZE;
-    }
-
-    return cursor_size;
-}
 
 static short poll_single(int fd, short events, int timeout) {
     pollfd pfd { .fd = fd, .events = events, .revents = 0 };
@@ -70,7 +57,7 @@ Display::Display() {
             else if (!strcmp(wp_cursor_shape_manager_v1_interface.name, interface)
                 && version >= DESIRED_WP_CURSOR_SHAPE_V1_VERSION)
             {
-                self._cursor_shape_manager.reset(static_cast<wp_cursor_shape_manager_v1 *>(wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, DESIRED_WP_CURSOR_SHAPE_V1_VERSION)));
+                self._cursor_manager = std::make_unique<ShapeCursorManager>(static_cast<wp_cursor_shape_manager_v1 *>(wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, DESIRED_WP_CURSOR_SHAPE_V1_VERSION)));
             }
             else if (!strcmp(xdg_wm_base_interface.name, interface)
                 && version >= DESIRED_XDG_SHELL_VERSION)
@@ -103,13 +90,15 @@ Display::Display() {
     wl_registry_add_listener(_registry.get(), &registry_listener, this);
     wl_display_roundtrip(_display.get());
 
-    if (!_compositor || !_shm || !_wm_base) {
+    if (!_compositor || !_wm_base || (!_cursor_manager && !_shm)) {
         throw std::runtime_error("Missing required wayland globals");
     }
 
     xdg_wm_base_add_listener(_wm_base.get(), &wm_base_listener, this);
 
-    _cursor_theme.reset(wl_cursor_theme_load(nullptr, get_cursor_size(), _shm.get()));
+    if (!_cursor_manager) {
+        _cursor_manager = std::make_unique<ThemeCursorManager>(_compositor.get(), _shm.get());
+    }
     _xkb_context.reset(xkb_context_new(XKB_CONTEXT_NO_FLAGS));
 }
 

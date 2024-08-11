@@ -3,8 +3,6 @@
 #include "Display.hpp"
 #include "Seat.hpp"
 
-static constexpr char DEFAULT_CURSOR_NAME[] = "default";
-
 Pointer::Pointer(Seat& seat)
     :_display(seat._display)
     ,_focus(nullptr)
@@ -15,12 +13,7 @@ Pointer::Pointer(Seat& seat)
 
             if (surface) {
                 self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
-
-                if (self._cursor_shape_device) {
-                    wp_cursor_shape_device_v1_set_shape(self._cursor_shape_device.get(), serial, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
-                } else {
-                    wl_pointer_set_cursor(self._pointer.get(), serial, self._cursor_surface.get(), static_cast<int32_t>(self._cursor_image->hotspot_x), static_cast<int32_t>(self._cursor_image->hotspot_y));
-                }
+                self._cursor->set_pointer(serial);
             }
         },
         .leave = [](void *data, wl_pointer *, uint32_t, wl_surface *) noexcept {
@@ -42,14 +35,5 @@ Pointer::Pointer(Seat& seat)
     _pointer.reset(wl_seat_get_pointer(seat._seat.get()));
     wl_pointer_add_listener(_pointer.get(), &pointer_listener, this);
 
-    const auto& cursor = *wl_cursor_theme_get_cursor(_display._cursor_theme.get(), DEFAULT_CURSOR_NAME);
-
-    _cursor_image = cursor.images[0];
-    _cursor_surface.reset(wl_compositor_create_surface(_display._compositor.get()));
-    wl_surface_attach(_cursor_surface.get(), wl_cursor_image_get_buffer(_cursor_image), 0, 0);
-    wl_surface_commit(_cursor_surface.get());
-
-    if (_display._cursor_shape_manager) {
-        _cursor_shape_device.reset(wp_cursor_shape_manager_v1_get_pointer(_display._cursor_shape_manager.get(), _pointer.get()));
-    }
+    _cursor = _display._cursor_manager->get_cursor(_pointer.get());
 }

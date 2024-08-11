@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cursor/CursorManagerBase.hpp"
 #include "Seat.hpp"
 #include "XkbPointer.hpp"
 
@@ -27,16 +28,15 @@ private:
     WaylandPointer<wl_registry> _registry;
 
     WaylandPointer<wl_compositor> _compositor;
-    WaylandPointer<wl_shm> _shm;
     WaylandPointer<xdg_wm_base> _wm_base;
 
     std::forward_list<Seat> _seats;
 
     // Optional protocols
+    WaylandPointer<wl_shm> _shm; // Only needed for wl-cursor theme cursors
     WaylandPointer<wp_content_type_manager_v1> _content_type_manager; 
-    WaylandPointer<wp_cursor_shape_manager_v1> _cursor_shape_manager;
     WaylandPointer<zxdg_decoration_manager_v1> _decoration_manager;
 
-    WaylandPointer<wl_cursor_theme> _cursor_theme;
+    std::unique_ptr<CursorManagerBase> _cursor_manager;
     XkbPointer<xkb_context> _xkb_context;
 };

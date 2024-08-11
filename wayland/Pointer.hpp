@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cursor/CursorBase.hpp"
 #include "WaylandPointer.hpp"
 
 class Display;
@@ -21,9 +22,5 @@ private:
     Window *_focus;
 
     WaylandPointer<wl_pointer> _pointer;
-    
-    wl_cursor_image *_cursor_image;
-    WaylandPointer<wl_surface> _cursor_surface;
-
-    WaylandPointer<wp_cursor_shape_device_v1> _cursor_shape_device;
+    std::unique_ptr<CursorBase> _cursor;
 };
