@@ -7,7 +7,7 @@
 
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-#define XKB_EVDEV_OFFSET 8
+static constexpr uint32_t XKB_EVDEV_OFFSET = 8;
 
 Keyboard::Keyboard(Seat& seat)
     :_display(seat._display)
