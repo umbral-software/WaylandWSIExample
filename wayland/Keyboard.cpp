@@ -1,7 +1,7 @@
 #include "Keyboard.hpp"
 
 #include "Display.hpp"
-#include "MappableFd.hpp"
+#include "MappedFd.hpp"
 #include "Seat.hpp"
 #include "Window.hpp"
 
@@ -19,7 +19,7 @@ Keyboard::Keyboard(Seat& seat)
 
             switch (format) {
             case WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1: {
-                MappableFd file(fd, size);
+                MappedFd file(fd, size);
                 self._keymap.reset(xkb_keymap_new_from_buffer(self._display._xkb_context.get(), static_cast<const char *>(file.map()), size, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS));
                 break;
             }
