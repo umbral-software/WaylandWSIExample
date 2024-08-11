@@ -10,7 +10,11 @@ MappedFd::MappedFd(int fd, size_t size)
 {
     _fd = fd;
     _size = size;
-    _mapping = mmap(nullptr, _size, PROT_WRITE, MAP_PRIVATE, _fd, 0);
+    if (size) {
+        _mapping = mmap(nullptr, _size, PROT_WRITE, MAP_PRIVATE, _fd, 0);
+    } else {
+        _mapping = nullptr;
+    }
 }
 
 MappedFd::MappedFd(MappedFd&& other) noexcept {

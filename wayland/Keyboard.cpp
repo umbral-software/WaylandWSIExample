@@ -16,16 +16,16 @@ Keyboard::Keyboard(Seat& seat)
     static constexpr wl_keyboard_listener keyboard_listener {
         .keymap = [](void *data, wl_keyboard *, uint32_t format, int fd, uint32_t size) noexcept {
             auto& self = *reinterpret_cast<Keyboard *>(data);
+            // Note: fd is always valid, but may be of size 0
+            MappedFd file(fd, size);
 
             switch (format) {
             case WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1: {
-                MappedFd file(fd, size);
                 self._keymap.reset(xkb_keymap_new_from_buffer(self._display._xkb_context.get(), static_cast<const char *>(file.map()), size, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS));
                 break;
             }
             default:
                 std::fprintf(stderr, "Unknown keymap type %d\n", format);
-                if (fd >= 0) close(fd);
                 break;
             }
         },
