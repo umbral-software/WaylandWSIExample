@@ -4,11 +4,11 @@
 
 #include <exception>
 
-#define STAGING_PRIORITY 0.0f
-#define LOW_PRIORITY 0.25f
-#define NORMAL_PRIORITY 0.5f
-#define HIGH_PRIORITY 0.75f
-#define RENDER_TARGET_PRIORITY 1.0f
+inline constexpr float STAGING_PRIORITY = 0.0f;
+inline constexpr float  LOW_PRIORITY = 0.25f;
+inline constexpr float  NORMAL_PRIORITY = 0.5f;
+inline constexpr float  HIGH_PRIORITY = 0.75f;
+inline constexpr float  RENDER_TARGET_PRIORITY = 1.0f;
 
 class BadVkResult final : public std::exception {
 public:

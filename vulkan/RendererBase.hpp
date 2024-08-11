@@ -4,7 +4,7 @@
 
 #include <array>
 
-#define NUM_FRAMES_IN_FLIGHT 2
+inline constexpr size_t NUM_FRAMES_IN_FLIGHT = 2;
 
 struct FrameData {
     VkCommandPool command_pool;
