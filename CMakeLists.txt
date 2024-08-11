@@ -43,7 +43,11 @@ endfunction()
 
 add_executable(wayland_example main.cpp MappedFd.cpp vk_mem_alloc.cpp volk.c
     vulkan/Common.cpp vulkan/Renderer.cpp vulkan/RendererBase.cpp vulkan/Swapchain.cpp vulkan/SwapchainBase.cpp
-    wayland/Display.cpp wayland/Keyboard.cpp wayland/Pointer.cpp wayland/Seat.cpp wayland/Window.cpp)
+    wayland/Display.cpp wayland/Keyboard.cpp wayland/Pointer.cpp wayland/Seat.cpp wayland/Window.cpp
+    wayland/cursor/CursorBase.cpp wayland/cursor/CursorManagerBase.cpp
+    wayland/cursor/shape/ShapeCursor.cpp wayland/cursor/shape/ShapeCursorManager.cpp
+    wayland/cursor/theme/ThemeCursor.cpp wayland/cursor/theme/ThemeCursorManager.cpp
+)
 ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
 ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
 ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/staging/cursor-shape/cursor-shape-v1.xml BASENAME cursor-shape)
