@@ -26,8 +26,6 @@ void ThemeCursor::unset_pointer(uint32_t serial) {
 void ThemeCursor::thread_entry() noexcept {
     uint32_t image_index = 0;
     while (!_thread_status.test(std::memory_order_relaxed)) {
-        std::printf("%u\n", image_index);
-
         auto *image = _cursor->images[image_index];
         wl_surface_attach(_surface.get(), wl_cursor_image_get_buffer(image), image->width, image->height);
         wl_surface_damage_buffer(_surface.get(), 0, 0, image->width, image->height);
