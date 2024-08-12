@@ -9,6 +9,7 @@ public:
     explicit ShapeCursor(wp_cursor_shape_device_v1 *cursor_shape_device);
 
     virtual void set_pointer(uint32_t serial) override;
+    virtual void unset_pointer(uint32_t serial) override;
 
 private:
     WaylandPointer<wp_cursor_shape_device_v1> _device;

@@ -16,9 +16,10 @@ Pointer::Pointer(Seat& seat)
                 self._cursor->set_pointer(serial);
             }
         },
-        .leave = [](void *data, wl_pointer *, uint32_t, wl_surface *) noexcept {
+        .leave = [](void *data, wl_pointer *, uint32_t serial, wl_surface *) noexcept {
             auto& self = *static_cast<Pointer *>(data);
 
+            self._cursor->unset_pointer(serial);
             self._focus = nullptr;
         },
         .motion  = [](void *, wl_pointer *, uint32_t, wl_fixed_t, wl_fixed_t) noexcept {},
