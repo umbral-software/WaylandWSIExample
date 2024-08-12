@@ -14,14 +14,12 @@ ThemeCursor::~ThemeCursor() {
 }
 
 void ThemeCursor::set_pointer(uint32_t serial) {
-    _serial = serial;
-
     auto *image = _cursor->images[0];
     attach_buffer(nullptr, image);
     wl_pointer_set_cursor(_pointer, serial, _surface.get(), image->hotspot_x, image->hotspot_y);
 
     if (_cursor->image_count > 1) {
-        _thread_status.clear(std::memory_order_release);
+        _thread_status.clear(std::memory_order_relaxed);
         _thread = std::thread(&ThemeCursor::thread_entry, this);
     }
 }

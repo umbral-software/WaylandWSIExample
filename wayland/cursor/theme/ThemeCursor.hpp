@@ -28,7 +28,6 @@ private:
     wl_pointer *_pointer;
     WaylandPointer<wl_surface> _surface;
 
-    uint32_t _serial;
     std::atomic_flag _thread_status;
     std::thread _thread;
 };
