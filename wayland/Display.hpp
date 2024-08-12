@@ -30,6 +30,7 @@ private:
     WaylandPointer<wl_compositor> _compositor;
     WaylandPointer<xdg_wm_base> _wm_base;
 
+    std::unique_ptr<CursorManagerBase> _cursor_manager;
     std::forward_list<Seat> _seats;
 
     // Optional protocols
@@ -37,6 +38,5 @@ private:
     WaylandPointer<wp_content_type_manager_v1> _content_type_manager; 
     WaylandPointer<zxdg_decoration_manager_v1> _decoration_manager;
 
-    std::unique_ptr<CursorManagerBase> _cursor_manager;
     XkbPointer<xkb_context> _xkb_context;
 };
