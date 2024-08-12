@@ -1,7 +1,7 @@
 #include "ThemeCursorManager.hpp"
 #include "ThemeCursor.hpp"
 
-static constexpr char DEFAULT_CURSOR_NAME[] = "wait";
+static constexpr char DEFAULT_CURSOR_NAME[] = "default";
 static constexpr int DEFAULT_CURSOR_SIZE = 16;
 
 static int get_cursor_size() {
