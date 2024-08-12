@@ -50,11 +50,11 @@ void ThemeCursor::thread_entry() noexcept {
     uint32_t image_index = 0;
     while (!_thread_status.test(std::memory_order_relaxed)) {
         const auto old_image = _cursor->images[image_index];
+        std::this_thread::sleep_for(std::chrono::milliseconds(old_image->delay));
 
         image_index = (image_index + 1) % _cursor->image_count;
         auto *image = _cursor->images[image_index];
 
         attach_buffer(old_image, image);
-        std::this_thread::sleep_for(std::chrono::milliseconds(image->delay));
     }
 }
