@@ -20,6 +20,7 @@ public:
     virtual void unset_pointer(uint32_t serial) override;
 
 private:
+    void attach_buffer(wl_cursor_image *old_image, wl_cursor_image *image);
     void thread_entry() noexcept;
 
 private:
