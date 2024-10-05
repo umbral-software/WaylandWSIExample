@@ -286,13 +286,6 @@ Renderer::Renderer(Window& window)
         VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
-    if (physical_device_info.has_memory_priority) {
-        device_extensions.emplace_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
-    }
-    if (physical_device_info.has_pageable_device_local_memory) {
-        device_extensions.emplace_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
-    }
-
     void *optional_pnext_chain = nullptr;
 
     VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT desired_pageable_memory_features {
@@ -300,6 +293,7 @@ Renderer::Renderer(Window& window)
         .pNext = &desired_pageable_memory_features
     };
     if (physical_device_info.has_pageable_device_local_memory) {
+        device_extensions.emplace_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
         desired_pageable_memory_features.pageableDeviceLocalMemory = true;
         std::swap(optional_pnext_chain, desired_pageable_memory_features.pNext);
     }
@@ -308,6 +302,7 @@ Renderer::Renderer(Window& window)
         .pNext = &desired_memory_priority_features
     };
     if (physical_device_info.has_memory_priority) {
+        device_extensions.emplace_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
         desired_memory_priority_features.memoryPriority = true;
         std::swap(optional_pnext_chain, desired_memory_priority_features.pNext);
     }
