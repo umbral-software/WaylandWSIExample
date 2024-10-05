@@ -23,8 +23,7 @@ Also required to build, but not used:
 
 ## Known Issues
 
-* No client side decoration support, only fullscreen is suppported if XDG Decoration is not provided by the compositor
-* No support for animated cursors when Cursor Shape is not supported
+* No client side decoration support, only fullscreen is suppported if XDG Decoration is not provided by the compositor.
 
 ## Dependencies
 
