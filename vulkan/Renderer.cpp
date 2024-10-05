@@ -11,6 +11,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <utility>
 
 using namespace std::literals;
 
@@ -171,26 +172,23 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
 
         VkPhysicalDeviceMemoryPriorityFeaturesEXT memory_priority_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT,
-            .pNext = &memory_priority_features
         };
         if (has_ext_memory_priority) {
-            std::swap(optional_pnext_chain, memory_priority_features.pNext);
+            memory_priority_features.pNext = std::exchange(optional_pnext_chain, &memory_priority_features);
         }
 
         VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pagable_device_local_memory_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT,
-            .pNext = &pagable_device_local_memory_features
         };
         if (has_ext_pageable_device_local_memory) {
-            std::swap(optional_pnext_chain, pagable_device_local_memory_features.pNext);
+            pagable_device_local_memory_features.pNext = std::exchange(optional_pnext_chain, &pagable_device_local_memory_features);
         }
 
         VkPhysicalDeviceMaintenance5FeaturesKHR maintenance_5_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR,
-            .pNext = &maintenance_5_features
         };
         if (has_khr_maintenance_5) {
-            std::swap(optional_pnext_chain, maintenance_5_features.pNext);
+            maintenance_5_features.pNext = std::exchange(optional_pnext_chain, &maintenance_5_features);
         }
 
         VkPhysicalDeviceVulkan13Features vulkan_1_3_features {
@@ -298,21 +296,19 @@ Renderer::Renderer(Window& window)
 
     VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT desired_pageable_memory_features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT,
-        .pNext = &desired_pageable_memory_features
     };
     if (physical_device_info.has_pageable_device_local_memory) {
         device_extensions.emplace_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
         desired_pageable_memory_features.pageableDeviceLocalMemory = true;
-        std::swap(optional_pnext_chain, desired_pageable_memory_features.pNext);
+        desired_pageable_memory_features.pNext = std::exchange(optional_pnext_chain, &desired_pageable_memory_features);
     }
     VkPhysicalDeviceMemoryPriorityFeaturesEXT desired_memory_priority_features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT,
-        .pNext = &desired_memory_priority_features
     };
     if (physical_device_info.has_memory_priority) {
         device_extensions.emplace_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
         desired_memory_priority_features.memoryPriority = true;
-        std::swap(optional_pnext_chain, desired_memory_priority_features.pNext);
+        desired_memory_priority_features.pNext = std::exchange(optional_pnext_chain, &desired_memory_priority_features);
     }
     const VkPhysicalDeviceMaintenance5FeaturesKHR desired_maintenance_5_features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR,
