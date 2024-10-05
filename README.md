@@ -23,7 +23,7 @@ Also required to build, but not used:
 
 ## Known Issues
 
-* No client side decoration support, only fullscreen is suppported if XDG Decoration is not provided by the compositor.
+* No client side decoration support, only fullscreen is suppported if XDG Decoration is not provided by the compositor. This is considered WONTFIX, developers should consider implementing libdecor if they need client side decorations, but this is incompatible with the raw use of xdg_shell protocols used by this project.
 
 ## Dependencies
 
