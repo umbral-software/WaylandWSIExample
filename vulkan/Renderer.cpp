@@ -16,6 +16,7 @@ using namespace std::literals;
 
 struct PhysicalDeviceInformation {
     VkPhysicalDevice physical_device;
+    uint32_t vulkan_version;
     uint32_t graphics_queue, compute_queue, transfer_queue;
 
     bool graphics_queue_supports_presentation;
@@ -129,7 +130,11 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
         auto& device_info = ret[i];
         const auto physical_device = physical_devices[i];
 
+        VkPhysicalDeviceProperties physical_device_props;
+        vkGetPhysicalDeviceProperties(physical_device, &physical_device_props);
+
         device_info.physical_device = physical_device;
+        device_info.vulkan_version = physical_device_props.apiVersion;
         device_info.graphics_queue = find_queue(physical_device, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT, 0);
         device_info.compute_queue = find_queue(physical_device, VK_QUEUE_COMPUTE_BIT, VK_QUEUE_GRAPHICS_BIT);
         device_info.transfer_queue = find_queue(physical_device, VK_QUEUE_TRANSFER_BIT, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
@@ -213,6 +218,9 @@ static PhysicalDeviceInformation select_physical_device(
     for (const auto& device_info : get_physical_device_info(instance, surface)) {
         bool is_valid = true;
 
+        if (device_info.vulkan_version < VK_API_VERSION_1_3) {
+            is_valid = false;
+        }
         if (!device_info.has_maintenance_5) {
             is_valid = false;
         }
