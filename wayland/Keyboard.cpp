@@ -81,7 +81,9 @@ Keyboard::Keyboard(Seat& seat)
         .modifiers = [](void *data, wl_keyboard *, uint32_t, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) noexcept {
             auto& self = *reinterpret_cast<Keyboard *>(data);
 
-            xkb_state_update_mask(self._state.get(), mods_depressed, mods_latched, mods_locked, 0, 0, group);
+            if (self._state) {
+                xkb_state_update_mask(self._state.get(), mods_depressed, mods_latched, mods_locked, 0, 0, group);
+            }
         },
         .repeat_info = [](void *, wl_keyboard *, int32_t, int32_t) noexcept {
 
