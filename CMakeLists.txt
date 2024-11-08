@@ -48,13 +48,13 @@ add_executable(wayland_example main.cpp MappedFd.cpp vk_mem_alloc.cpp volk.c
     wayland/cursor/shape/ShapeCursor.cpp wayland/cursor/shape/ShapeCursorManager.cpp
     wayland/cursor/theme/ThemeCursor.cpp wayland/cursor/theme/ThemeCursorManager.cpp
 )
-ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
-ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/stable/viewporter/viewporter.xml BASENAME viewporter)
-ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
-ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/staging/cursor-shape/cursor-shape-v1.xml BASENAME cursor-shape)
-ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/staging/fractional-scale/fractional-scale-v1.xml BASENAME fractional-scale)
-ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/unstable/tablet/tablet-unstable-v2.xml BASENAME tablet) # dependency of cursor-shape
-ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
+ecm_add_wayland_client_protocol(wayland_example PRIVATE_CODE PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
+ecm_add_wayland_client_protocol(wayland_example PRIVATE_CODE PROTOCOL ${WaylandProtocols_DATADIR}/stable/viewporter/viewporter.xml BASENAME viewporter)
+ecm_add_wayland_client_protocol(wayland_example PRIVATE_CODE PROTOCOL ${WaylandProtocols_DATADIR}/staging/content-type/content-type-v1.xml BASENAME content-type)
+ecm_add_wayland_client_protocol(wayland_example PRIVATE_CODE PROTOCOL ${WaylandProtocols_DATADIR}/staging/cursor-shape/cursor-shape-v1.xml BASENAME cursor-shape)
+ecm_add_wayland_client_protocol(wayland_example PRIVATE_CODE PROTOCOL ${WaylandProtocols_DATADIR}/staging/fractional-scale/fractional-scale-v1.xml BASENAME fractional-scale)
+ecm_add_wayland_client_protocol(wayland_example PRIVATE_CODE PROTOCOL ${WaylandProtocols_DATADIR}/unstable/tablet/tablet-unstable-v2.xml BASENAME tablet) # dependency of cursor-shape
+ecm_add_wayland_client_protocol(wayland_example PRIVATE_CODE PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
 set_target_properties(wayland_example PROPERTIES CXX_STANDARD 23)
 target_compile_definitions(wayland_example PRIVATE GLM_FORCE_LEFT_HANDED VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
 target_include_directories(wayland_example PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
