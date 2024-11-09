@@ -9,12 +9,26 @@
 
 static constexpr uint32_t MINIMUM_WL_COMPOSITOR_VERSION = 4;
 static constexpr uint32_t DESIRED_WL_COMPOSITOR_VERSION = 6;
+
+static constexpr uint32_t MINIMUM_WL_SEAT_VERSION = 7;
 static constexpr uint32_t DESIRED_WL_SEAT_VERSION = 7;
+
+static constexpr uint32_t MINIMUM_WL_SHM_VERSION = 1;
 static constexpr uint32_t DESIRED_WL_SHM_VERSION = 1;
+
+static constexpr uint32_t MINIMUM_WP_CONTENT_TYPE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CONTENT_TYPE_V1_VERSION = 1;
+
+static constexpr uint32_t MINIMUM_WP_CURSOR_SHAPE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CURSOR_SHAPE_V1_VERSION = 1;
+
+static constexpr uint32_t MINIMUM_WP_FRACTIONAL_SCALE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_FRACTIONAL_SCALE_V1_VERSION = 1;
+
+static constexpr uint32_t MINIMUM_XDG_DECORATION_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_DECORATION_V1_VERSION = 1;
+
+static constexpr uint32_t MINIMUM_XDG_SHELL_VERSION = 2;
 static constexpr uint32_t DESIRED_XDG_SHELL_VERSION = 2;
 
 static short poll_single(int fd, short events, int timeout) {
@@ -26,55 +40,95 @@ static short poll_single(int fd, short events, int timeout) {
     return pfd.revents;
 }
 
+template<typename T>
+static T *do_bind(wl_registry *wl_registry, uint32_t name, uint32_t version, const wl_interface *interface, uint32_t desired_version) noexcept {
+    return static_cast<T *>(wl_registry_bind(wl_registry, name, interface, std::min(version, desired_version)));
+}
+
 Display::Display() {
     static constexpr wl_registry_listener registry_listener {
-        .global = [](void *data, wl_registry *registry, uint32_t name, const char *interface, uint32_t version) noexcept {
+        .global = [](void *data, wl_registry *wl_registry, uint32_t name, const char *interface, uint32_t version) noexcept {
             auto& self = *static_cast<Display*>(data);
 
             if (!strcmp(wl_compositor_interface.name, interface)
                 && version >= MINIMUM_WL_COMPOSITOR_VERSION)
             {
-                self._compositor.reset(static_cast<wl_compositor *>(wl_registry_bind(registry, name, &wl_compositor_interface, std::min(version, DESIRED_WL_COMPOSITOR_VERSION))));
+                self._compositor.reset(do_bind<wl_compositor>(
+                    wl_registry, name, version,
+                    &wl_compositor_interface,
+                    DESIRED_WL_COMPOSITOR_VERSION
+                ));
             }
             else if (!strcmp(wl_seat_interface.name, interface)
-                && version >= DESIRED_WL_SEAT_VERSION)
+                && version >= MINIMUM_WL_SEAT_VERSION)
             {
-                self._seats.emplace_front(self, static_cast<wl_seat *>(wl_registry_bind(registry, name, &wl_seat_interface, DESIRED_WL_SEAT_VERSION)));
+                self._seats.emplace_front(self, do_bind<wl_seat>(
+                    wl_registry, name, version,
+                    &wl_seat_interface,
+                    DESIRED_WL_SEAT_VERSION
+                ));
             }
             else if (!strcmp(wl_shm_interface.name, interface)
-                && version >= DESIRED_WL_SHM_VERSION)
+                && version >= MINIMUM_WL_SHM_VERSION)
             {
-                self._shm.reset(static_cast<wl_shm *>(wl_registry_bind(registry, name, &wl_shm_interface, DESIRED_WL_SHM_VERSION)));
+                self._shm.reset(do_bind<wl_shm>(
+                    wl_registry, name, version,
+                    &wl_shm_interface,
+                    DESIRED_WL_SHM_VERSION
+                ));
             }
             else if (!strcmp(xdg_wm_base_interface.name, interface)
-                && version >= DESIRED_XDG_SHELL_VERSION)
+                && version >= MINIMUM_XDG_SHELL_VERSION)
             {
-                self._wm_base.reset(static_cast<xdg_wm_base *>(wl_registry_bind(registry, name, &xdg_wm_base_interface, DESIRED_XDG_SHELL_VERSION)));
+                self._wm_base.reset(do_bind<xdg_wm_base>(
+                    wl_registry, name, version,
+                    &xdg_wm_base_interface,
+                    DESIRED_XDG_SHELL_VERSION
+                ));
             }
             else if (!strcmp(wp_content_type_manager_v1_interface.name, interface)
-                && version >= DESIRED_WP_CONTENT_TYPE_V1_VERSION)
+                && version >= MINIMUM_WP_CONTENT_TYPE_V1_VERSION)
             {
-                self._content_type_manager.reset(static_cast<wp_content_type_manager_v1 *>(wl_registry_bind(registry, name, &wp_content_type_manager_v1_interface, DESIRED_WP_CONTENT_TYPE_V1_VERSION)));
+                self._content_type_manager.reset(do_bind<wp_content_type_manager_v1>(
+                    wl_registry, name, version,
+                    &wp_content_type_manager_v1_interface,
+                    DESIRED_WP_CONTENT_TYPE_V1_VERSION
+                ));
             }
             else if (!strcmp(wp_cursor_shape_manager_v1_interface.name, interface)
-                && version >= DESIRED_WP_CURSOR_SHAPE_V1_VERSION)
+                && version >= MINIMUM_WP_CURSOR_SHAPE_V1_VERSION)
             {
-                self._cursor_manager = std::make_unique<ShapeCursorManager>(static_cast<wp_cursor_shape_manager_v1 *>(wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, DESIRED_WP_CURSOR_SHAPE_V1_VERSION)));
+                self._cursor_manager = std::make_unique<ShapeCursorManager>(do_bind<wp_cursor_shape_manager_v1>(
+                    wl_registry, name, version,
+                    &wp_cursor_shape_manager_v1_interface,
+                    DESIRED_WP_CURSOR_SHAPE_V1_VERSION
+                ));
             }
             else if (!strcmp(wp_fractional_scale_manager_v1_interface.name, interface)
-                && version >= DESIRED_WP_FRACTIONAL_SCALE_V1_VERSION)
+                && version >= MINIMUM_WP_FRACTIONAL_SCALE_V1_VERSION)
             {
-                self._fractional_scale_manager.reset(static_cast<wp_fractional_scale_manager_v1 *>(wl_registry_bind(registry, name, &wp_fractional_scale_manager_v1_interface, DESIRED_WP_FRACTIONAL_SCALE_V1_VERSION)));
+                self._fractional_scale_manager.reset(do_bind<wp_fractional_scale_manager_v1>(
+                    wl_registry, name, version,
+                    &wp_fractional_scale_manager_v1_interface,
+                    DESIRED_WP_FRACTIONAL_SCALE_V1_VERSION
+                ));
             }
             else if (!strcmp(xdg_wm_base_interface.name, interface)
-                && version >= DESIRED_XDG_SHELL_VERSION)
+                && version >= MINIMUM_XDG_SHELL_VERSION)
             {
-                self._wm_base.reset(static_cast<xdg_wm_base *>(wl_registry_bind(registry, name, &xdg_wm_base_interface, DESIRED_XDG_SHELL_VERSION)));
+                self._wm_base.reset(do_bind<xdg_wm_base>(
+                    wl_registry, name, version,
+                    &xdg_wm_base_interface,
+                    DESIRED_XDG_SHELL_VERSION
+                ));
             }
             else if (!strcmp(zxdg_decoration_manager_v1_interface.name, interface)
-                && version >= DESIRED_XDG_DECORATION_V1_VERSION)
+                && version >= MINIMUM_XDG_DECORATION_V1_VERSION)
             {
-                self._decoration_manager.reset(static_cast<zxdg_decoration_manager_v1 *>(wl_registry_bind(registry, name, &zxdg_decoration_manager_v1_interface, DESIRED_XDG_DECORATION_V1_VERSION)));
+                self._decoration_manager.reset(do_bind<zxdg_decoration_manager_v1>(
+                    wl_registry, name, version,
+                    &zxdg_decoration_manager_v1_interface, DESIRED_XDG_DECORATION_V1_VERSION
+                ));
             }
         },
         .global_remove = [](void *, wl_registry *, uint32_t) noexcept {
