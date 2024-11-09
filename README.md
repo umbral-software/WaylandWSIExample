@@ -36,6 +36,7 @@ Also required to build, but not used:
   * Vulkan headers
   * VMA headers
   * Volk header
+  * Utility headers
   * glslc executable
 * Wayland Client headers/library
 * Wayland Cursor headers/library
@@ -43,6 +44,7 @@ Also required to build, but not used:
   * stable/xdg-shell
   * staging/content-type
   * staging/cursor-shape
+  * staging/fractional-scale
   * unstable/tablet v2
   * unstable/xdg-decoration
 * Wayland Scanner executable
