@@ -102,7 +102,7 @@ static uint32_t find_queue(VkPhysicalDevice physical_device, VkQueueFlags requir
         }
     }
 
-    return -1;
+    return UINT32_MAX;
 }
 
 static std::vector<uint8_t> load_file(std::filesystem::path path) {
@@ -162,7 +162,7 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
             }
         }
 
-        if (has_khr_swapchain && device_info.graphics_queue != -1) {
+        if (has_khr_swapchain && device_info.graphics_queue != UINT32_MAX) {
             VkBool32 supported;
             check_success(vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, device_info.graphics_queue, surface, &supported));
             device_info.graphics_queue_supports_presentation = !!supported;

@@ -21,7 +21,7 @@ Window::Window(Display& display)
         .preferred_buffer_scale = [](void *data, wl_surface *, int32_t factor){
             auto& self = *static_cast<Window *>(data);
 
-            self._integer_scale = factor;
+            self._integer_scale = static_cast<uint32_t>(factor);
         },
         .preferred_buffer_transform = [](void *, wl_surface *, uint32_t) noexcept {
             

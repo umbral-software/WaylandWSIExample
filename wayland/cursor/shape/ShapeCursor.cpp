@@ -9,6 +9,6 @@ void ShapeCursor::set_pointer(uint32_t serial) {
 }
 
 
-void ShapeCursor::unset_pointer(uint32_t serial) {
+void ShapeCursor::unset_pointer(uint32_t) {
 
 }
