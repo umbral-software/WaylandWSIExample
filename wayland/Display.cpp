@@ -12,6 +12,7 @@ static constexpr uint32_t DESIRED_WL_SEAT_VERSION = 7;
 static constexpr uint32_t DESIRED_WL_SHM_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CONTENT_TYPE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CURSOR_SHAPE_V1_VERSION = 1;
+static constexpr uint32_t DESIRED_WP_FRACTIONAL_SCALE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_DECORATION_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_SHELL_VERSION = 2;
 
@@ -58,6 +59,11 @@ Display::Display() {
                 && version >= DESIRED_WP_CURSOR_SHAPE_V1_VERSION)
             {
                 self._cursor_manager = std::make_unique<ShapeCursorManager>(static_cast<wp_cursor_shape_manager_v1 *>(wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, DESIRED_WP_CURSOR_SHAPE_V1_VERSION)));
+            }
+            else if (!strcmp(wp_fractional_scale_manager_v1_interface.name, interface)
+                && version >= DESIRED_WP_FRACTIONAL_SCALE_V1_VERSION)
+            {
+                self._fractional_scale_manager.reset(static_cast<wp_fractional_scale_manager_v1 *>(wl_registry_bind(registry, name, &wp_fractional_scale_manager_v1_interface, DESIRED_WP_FRACTIONAL_SCALE_V1_VERSION)));
             }
             else if (!strcmp(xdg_wm_base_interface.name, interface)
                 && version >= DESIRED_XDG_SHELL_VERSION)

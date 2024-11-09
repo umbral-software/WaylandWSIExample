@@ -18,12 +18,22 @@ public:
     void text(std::string_view str) const noexcept;
 
     wl_display *display() noexcept;
+
     bool should_close() const noexcept;
+
+    // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
+    uint32_t scale() const noexcept;
+
     std::pair<uint32_t, uint32_t> size() const noexcept;
+
     wl_surface *surface() noexcept;
+
+public:
+    static constexpr uint32_t DEFAULT_SCALE_DPI = 120;
 
 private:
     void toggle_fullscreen() noexcept;
+
 private:
     Display& _display;
 
@@ -33,9 +43,11 @@ private:
 
     // Optional protocols
     WaylandPointer<wp_content_type_v1> _content_type;
+    WaylandPointer<wp_fractional_scale_v1> _fractional_scale;
     WaylandPointer<zxdg_toplevel_decoration_v1> _toplevel_decoration;
 
     bool _closed, _fullscreen, _has_server_decorations;
+    uint32_t _scale;
 
     std::pair<uint32_t, uint32_t> _actual_size, _desired_size;
 };

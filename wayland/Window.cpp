@@ -41,8 +41,16 @@ Window::Window(Display& display)
         }
     };
 
+    static constexpr wp_fractional_scale_v1_listener fractional_scale_listener {
+        .preferred_scale = [](void *data, wp_fractional_scale_v1 *, uint32_t scale) noexcept {
+            auto& self = *static_cast<Window*>(data);
+
+            self._scale = scale;
+        }
+    };
+
     static constexpr zxdg_toplevel_decoration_v1_listener toplevel_decoration_listener {
-        .configure = [](void *data, zxdg_toplevel_decoration_v1 *, uint32_t mode) {
+        .configure = [](void *data, zxdg_toplevel_decoration_v1 *, uint32_t mode) noexcept {
             auto& self = *static_cast<Window*>(data);
 
             switch (mode) {
@@ -77,6 +85,11 @@ Window::Window(Display& display)
         wp_content_type_v1_set_content_type(_content_type.get(), WP_CONTENT_TYPE_V1_TYPE_GAME);
     }
 
+    if (_display._fractional_scale_manager) {
+        _fractional_scale.reset(wp_fractional_scale_manager_v1_get_fractional_scale(display._fractional_scale_manager.get(), _surface.get()));
+        wp_fractional_scale_v1_add_listener(_fractional_scale.get(), &fractional_scale_listener, this);
+    }
+
     if (_display._decoration_manager) {
         _toplevel_decoration.reset(zxdg_decoration_manager_v1_get_toplevel_decoration(display._decoration_manager.get(), _toplevel.get()));
         zxdg_toplevel_decoration_v1_add_listener(_toplevel_decoration.get(), &toplevel_decoration_listener, this);
@@ -86,6 +99,8 @@ Window::Window(Display& display)
     _closed = false;
     _fullscreen = false;
     _has_server_decorations = !!_display._decoration_manager;
+
+    _scale = 0.0;
 
     _actual_size = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
     _desired_size = {0, 0};
@@ -120,6 +135,10 @@ void Window::text(std::string_view str) const noexcept {
 
 wl_display *Window::display() noexcept {
     return _display._display.get();
+}
+
+uint32_t Window::scale() const noexcept {
+    return _scale ? _scale : DEFAULT_SCALE_DPI;
 }
 
 bool Window::should_close() const noexcept {
