@@ -117,8 +117,8 @@ Window::Window(Display& display)
     _fullscreen = false;
     _has_server_decorations = !!_display._decoration_manager;
 
-    _fractional_dpi = 120;
-    _integer_scale = 1;
+    _fractional_dpi = 0;
+    _integer_scale = 0;
 
     _actual_size = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
     _desired_size = {0, 0};
@@ -128,6 +128,7 @@ Window::Window(Display& display)
     }
 
     wl_surface_commit(_surface.get());
+    wl_display_roundtrip(_display._display.get());
 }
 
 void Window::keysym(uint32_t keysym, bool, bool, bool alt) noexcept {
