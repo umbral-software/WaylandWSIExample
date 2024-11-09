@@ -11,6 +11,23 @@ static constexpr char WINDOW_TITLE[] = "Wayland Example";
 Window::Window(Display& display)
     :_display(display)
 {
+    static constexpr wl_surface_listener wl_surface_listener {
+        .enter = [](void *, wl_surface *, wl_output *) noexcept {
+
+        },
+        .leave = [](void *, wl_surface *, wl_output *) noexcept {
+            
+        },
+        .preferred_buffer_scale = [](void *data, wl_surface *, int32_t factor){
+            auto& self = *static_cast<Window *>(data);
+
+            self._integer_scale = factor;
+        },
+        .preferred_buffer_transform = [](void *, wl_surface *, uint32_t) noexcept {
+            
+        }
+    };
+
     static constexpr xdg_surface_listener wm_surface_listener {
         .configure = [](void *data, xdg_surface *surface, uint32_t serial) noexcept {
             auto& self = *static_cast<Window *>(data);
@@ -45,7 +62,7 @@ Window::Window(Display& display)
         .preferred_scale = [](void *data, wp_fractional_scale_v1 *, uint32_t scale) noexcept {
             auto& self = *static_cast<Window*>(data);
 
-            self._scale = scale;
+            self._fractional_dpi = scale;
         }
     };
 
@@ -70,7 +87,7 @@ Window::Window(Display& display)
     };
 
     _surface.reset(wl_compositor_create_surface(_display._compositor.get()));
-    wl_surface_set_user_data(_surface.get(), this);
+    wl_surface_add_listener(_surface.get(), &wl_surface_listener, this);
 
     _wm_surface.reset(xdg_wm_base_get_xdg_surface(_display._wm_base.get(), _surface.get()));
     xdg_surface_add_listener(_wm_surface.get(), &wm_surface_listener, this);
@@ -100,7 +117,8 @@ Window::Window(Display& display)
     _fullscreen = false;
     _has_server_decorations = !!_display._decoration_manager;
 
-    _scale = 0.0;
+    _fractional_dpi = 120;
+    _integer_scale = 1;
 
     _actual_size = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
     _desired_size = {0, 0};
@@ -138,7 +156,9 @@ wl_display *Window::display() noexcept {
 }
 
 uint32_t Window::scale() const noexcept {
-    return _scale ? _scale : DEFAULT_SCALE_DPI;
+    if (_fractional_scale > 0) return _fractional_dpi;
+    if (_integer_scale > 0) return _integer_scale * DEFAULT_SCALE_DPI;
+    return DEFAULT_SCALE_DPI;
 }
 
 bool Window::should_close() const noexcept {
