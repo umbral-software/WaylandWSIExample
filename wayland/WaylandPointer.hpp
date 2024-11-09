@@ -2,6 +2,7 @@
 
 #include "wayland-content-type-client-protocol.h"
 #include "wayland-cursor-shape-client-protocol.h"
+#include "wayland-fractional-scale-client-protocol.h"
 #include "wayland-xdg-decoration-client-protocol.h"
 #include "wayland-xdg-shell-client-protocol.h"
 
@@ -68,6 +69,14 @@ struct WaylandDeleter {
 
     void operator()(wp_cursor_shape_manager_v1 *wp_cursor_shape_manager_v1) const noexcept {
         wp_cursor_shape_manager_v1_destroy(wp_cursor_shape_manager_v1);
+    }
+
+    void operator()(wp_fractional_scale_v1 *wp_fractional_scale_v1) const noexcept {
+        wp_fractional_scale_v1_destroy(wp_fractional_scale_v1);
+    }
+
+    void operator()(wp_fractional_scale_manager_v1 *wp_fractional_scale_manager_v1) const noexcept {
+        wp_fractional_scale_manager_v1_destroy(wp_fractional_scale_manager_v1);
     }
 
     void operator()(xdg_surface *xdg_surface) const noexcept {
