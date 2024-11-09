@@ -16,7 +16,11 @@ ThemeCursor::~ThemeCursor() {
 void ThemeCursor::set_pointer(uint32_t serial) {
     auto *image = _cursor->images[0];
     attach_buffer(nullptr, image);
-    wl_pointer_set_cursor(_pointer, serial, _surface.get(), image->hotspot_x, image->hotspot_y);
+    wl_pointer_set_cursor(
+        _pointer, serial, _surface.get(),
+        static_cast<int32_t>(image->hotspot_x),
+        static_cast<int32_t>(image->hotspot_y)
+    );
 
     if (_cursor->image_count > 1) {
         _thread_status.clear(std::memory_order_relaxed);
@@ -24,7 +28,7 @@ void ThemeCursor::set_pointer(uint32_t serial) {
     }
 }
 
-void ThemeCursor::unset_pointer(uint32_t serial) {
+void ThemeCursor::unset_pointer(uint32_t) {
     if (_thread.joinable()) {
         _thread_status.test_and_set(std::memory_order_relaxed);
         _thread.join();
@@ -41,8 +45,18 @@ void ThemeCursor::attach_buffer(wl_cursor_image *old_image, wl_cursor_image *ima
         y_offset = 0;
     }
 
-    wl_surface_attach(_surface.get(), wl_cursor_image_get_buffer(image), x_offset, y_offset);
-    wl_surface_damage_buffer(_surface.get(), 0, 0, image->width, image->height);
+    wl_surface_attach(
+        _surface.get(),
+        wl_cursor_image_get_buffer(image),
+        static_cast<int32_t>(x_offset),
+        static_cast<int32_t>(y_offset)
+    );
+    wl_surface_damage_buffer(
+        _surface.get(),
+        0, 0,
+        static_cast<int32_t>(image->width),
+        static_cast<int32_t>(image->height)
+    );
     wl_surface_commit(_surface.get());
 }
 
