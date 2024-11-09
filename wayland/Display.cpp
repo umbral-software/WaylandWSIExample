@@ -7,7 +7,8 @@
 
 #include <cstring>
 
-static constexpr uint32_t DESIRED_WL_COMPOSITOR_VERSION = 4;
+static constexpr uint32_t MINIMUM_WL_COMPOSITOR_VERSION = 4;
+static constexpr uint32_t DESIRED_WL_COMPOSITOR_VERSION = 6;
 static constexpr uint32_t DESIRED_WL_SEAT_VERSION = 7;
 static constexpr uint32_t DESIRED_WL_SHM_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CONTENT_TYPE_V1_VERSION = 1;
@@ -31,9 +32,9 @@ Display::Display() {
             auto& self = *static_cast<Display*>(data);
 
             if (!strcmp(wl_compositor_interface.name, interface)
-                && version >= DESIRED_WL_COMPOSITOR_VERSION)
+                && version >= MINIMUM_WL_COMPOSITOR_VERSION)
             {
-                self._compositor.reset(static_cast<wl_compositor *>(wl_registry_bind(registry, name, &wl_compositor_interface, DESIRED_WL_COMPOSITOR_VERSION)));
+                self._compositor.reset(static_cast<wl_compositor *>(wl_registry_bind(registry, name, &wl_compositor_interface, std::min(version, DESIRED_WL_COMPOSITOR_VERSION))));
             }
             else if (!strcmp(wl_seat_interface.name, interface)
                 && version >= DESIRED_WL_SEAT_VERSION)

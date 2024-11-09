@@ -47,7 +47,7 @@ private:
     WaylandPointer<zxdg_toplevel_decoration_v1> _toplevel_decoration;
 
     bool _closed, _fullscreen, _has_server_decorations;
-    uint32_t _scale;
+    uint32_t _fractional_dpi, _integer_scale;
 
     std::pair<uint32_t, uint32_t> _actual_size, _desired_size;
 };
