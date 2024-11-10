@@ -16,6 +16,8 @@ Full list of protocols supported:
 * [XDG shell](https://wayland.app/protocols/xdg-shell) (required)
 * [Content type hint](https://wayland.app/protocols/content-type-v1) (optional)
 * [Cursor Shape](https://wayland.app/protocols/cursor-shape-v1) (optional)
+* [Fractional Scale](https://wayland.app/protocols/fractional-scale-v1) (optional)
+* [Viewporter](https://wayland.app/protocols/viewporter) (optional, required for fractional scale)
 * [XDG Decoration](https://wayland.app/protocols/xdg-decoration-unstable-v1) (optional, mandatory for non-fullscreen windows)
 
 Also required to build, but not used:
@@ -42,6 +44,7 @@ Also required to build, but not used:
 * Wayland Cursor headers/library
 * Wayland Protocols library
   * stable/xdg-shell
+  * stable/viewporter
   * staging/content-type
   * staging/cursor-shape
   * staging/fractional-scale
