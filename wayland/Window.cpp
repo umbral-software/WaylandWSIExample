@@ -39,19 +39,24 @@ Window::Window(Display& display)
             }
             self._desired_surface_size = { 0, 0 };
 
+            if (self._desired_fractional_scale) {
+                self._actual_fractional_scale = self._desired_fractional_scale;
+            }
+            self._desired_fractional_scale = 0;
+
             if (self._desired_integer_scale) {
                 self._actual_integer_scale = self._desired_integer_scale;
-                wl_surface_set_buffer_scale(self._surface.get(), self._desired_integer_scale);
             }
             self._desired_integer_scale = 0;
 
-            if (self._desired_fractional_scale) {
-                self._actual_fractional_scale = self._desired_fractional_scale;
+            if (self._actual_fractional_scale) {
                 wp_viewport_set_destination(self._viewport.get(),
                     self._actual_surface_size.first,
                     self._actual_surface_size.second);
+                wl_surface_set_buffer_scale(self._surface.get(), 1);
+            } else if (self._actual_integer_scale) {
+                wl_surface_set_buffer_scale(self._surface.get(), self._actual_integer_scale);
             }
-            self._desired_fractional_scale = 0;
         }
     };
 
@@ -135,13 +140,15 @@ Window::Window(Display& display)
     _fullscreen = false;
     _has_server_decorations = !!_display._decoration_manager;
 
-    _actual_integer_scale = 1;
+    _actual_integer_scale = 0;
+    _desired_integer_scale = 0;
 
     if (display._has_fractional_scale) {
         _actual_fractional_scale = DEFAULT_SCALE_DPI;
     } else {
         _actual_fractional_scale = 0;
     }
+    _desired_fractional_scale = 0;
 
     _actual_surface_size = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
     _desired_surface_size = {0, 0};
@@ -180,8 +187,9 @@ wl_display *Window::display() noexcept {
 }
 
 uint32_t Window::buffer_scale() const noexcept {
-    if (_actual_fractional_scale > 0) return _actual_fractional_scale;
-    return DEFAULT_SCALE_DPI * static_cast<uint32_t>(_actual_integer_scale);
+    if (_actual_fractional_scale) return _actual_fractional_scale;
+    if (_actual_integer_scale) return static_cast<uint32_t>(_actual_integer_scale) * DEFAULT_SCALE_DPI;
+    return DEFAULT_SCALE_DPI;
 }
 
 std::pair<uint32_t, uint32_t> Window::buffer_size() const noexcept {
