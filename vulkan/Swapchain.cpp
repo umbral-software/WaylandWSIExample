@@ -137,8 +137,6 @@ void Swapchain::present(VkQueue queue) {
 }
 
 void Swapchain::rebuild(const std::pair<uint32_t, uint32_t>& window_size, VkRenderPass render_pass) {
-    printf("%ux%u\n", window_size.first, window_size.second);
-
     const VkSurfacePresentModeEXT present_mode {
         .sType = VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT,
         .presentMode = VK_PRESENT_MODE_FIFO_KHR // Always supported
