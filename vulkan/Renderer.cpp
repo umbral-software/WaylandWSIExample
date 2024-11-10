@@ -661,9 +661,9 @@ FrameData& Renderer::frame() noexcept {
 }
 
 void Renderer::render() {
-    if (_swapchain.rebuild_required() || _window.size() != _swapchain.size()) {
+    if (_swapchain.rebuild_required() || _window.buffer_size() != _swapchain.size()) {
         check_success(wait_all_fences()); // Can this be reduced?
-        _swapchain.rebuild(_window.size(), d.render_pass);
+        _swapchain.rebuild(_window.buffer_size(), d.render_pass);
     }
 
     _frame_index = (_frame_index + 1) % d.frame_data.size();

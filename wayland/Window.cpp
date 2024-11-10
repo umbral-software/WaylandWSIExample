@@ -21,7 +21,7 @@ Window::Window(Display& display)
         .preferred_buffer_scale = [](void *data, wl_surface *, int32_t factor){
             auto& self = *static_cast<Window *>(data);
 
-            self._integer_scale = static_cast<uint32_t>(factor);
+            self._integer_scale = factor;
         },
         .preferred_buffer_transform = [](void *, wl_surface *, uint32_t) noexcept {
             
@@ -32,10 +32,10 @@ Window::Window(Display& display)
         .configure = [](void *data, xdg_surface *surface, uint32_t serial) noexcept {
             auto& self = *static_cast<Window *>(data);
             xdg_surface_ack_configure(surface, serial);
-            if (self._desired_size.first && self._desired_size.second) {
-                self._actual_size = self._desired_size;
+            if (self._desired_surface_size.first && self._desired_surface_size.second) {
+                self._actual_surface_size = self._desired_surface_size;
             }
-            self._desired_size = { 0, 0 };
+            self._desired_surface_size = { 0, 0 };
         }
     };
 
@@ -43,7 +43,7 @@ Window::Window(Display& display)
         .configure = [](void *data, xdg_toplevel *, int32_t width, int32_t height, wl_array *) noexcept {
             auto& self = *static_cast<Window*>(data);
 
-            self._desired_size = { width, height };
+            self._desired_surface_size = { width, height };
         },
         .close = [](void *data, xdg_toplevel *) noexcept {
             auto& self = *static_cast<Window*>(data);
@@ -55,14 +55,6 @@ Window::Window(Display& display)
         },
         .wm_capabilities = [](void *, xdg_toplevel *, wl_array *) noexcept {
             
-        }
-    };
-
-    static constexpr wp_fractional_scale_v1_listener fractional_scale_listener {
-        .preferred_scale = [](void *data, wp_fractional_scale_v1 *, uint32_t scale) noexcept {
-            auto& self = *static_cast<Window*>(data);
-
-            self._fractional_dpi = scale;
         }
     };
 
@@ -102,11 +94,6 @@ Window::Window(Display& display)
         wp_content_type_v1_set_content_type(_content_type.get(), WP_CONTENT_TYPE_V1_TYPE_GAME);
     }
 
-    if (_display._fractional_scale_manager) {
-        _fractional_scale.reset(wp_fractional_scale_manager_v1_get_fractional_scale(display._fractional_scale_manager.get(), _surface.get()));
-        wp_fractional_scale_v1_add_listener(_fractional_scale.get(), &fractional_scale_listener, this);
-    }
-
     if (_display._decoration_manager) {
         _toplevel_decoration.reset(zxdg_decoration_manager_v1_get_toplevel_decoration(display._decoration_manager.get(), _toplevel.get()));
         zxdg_toplevel_decoration_v1_add_listener(_toplevel_decoration.get(), &toplevel_decoration_listener, this);
@@ -117,11 +104,10 @@ Window::Window(Display& display)
     _fullscreen = false;
     _has_server_decorations = !!_display._decoration_manager;
 
-    _fractional_dpi = 0;
-    _integer_scale = 0;
+    _integer_scale = 1;
 
-    _actual_size = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
-    _desired_size = {0, 0};
+    _actual_surface_size = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
+    _desired_surface_size = {0, 0};
 
     if (!_has_server_decorations) {
         toggle_fullscreen();
@@ -129,6 +115,8 @@ Window::Window(Display& display)
 
     wl_surface_commit(_surface.get());
     wl_display_roundtrip(_display._display.get());
+
+    wl_surface_set_buffer_scale(_surface.get(), _integer_scale);
 }
 
 void Window::keysym(uint32_t keysym, bool, bool, bool alt) noexcept {
@@ -156,18 +144,19 @@ wl_display *Window::display() noexcept {
     return _display._display.get();
 }
 
-uint32_t Window::scale() const noexcept {
-    if (_fractional_scale > 0) return _fractional_dpi;
-    if (_integer_scale > 0) return _integer_scale * DEFAULT_SCALE_DPI;
-    return DEFAULT_SCALE_DPI;
+uint32_t Window::buffer_scale() const noexcept {
+    return DEFAULT_SCALE_DPI * static_cast<uint32_t>(_integer_scale);
+}
+
+std::pair<uint32_t, uint32_t> Window::buffer_size() const noexcept {
+    return {
+        _actual_surface_size.first * static_cast<uint32_t>(_integer_scale),
+        _actual_surface_size.second * static_cast<uint32_t>(_integer_scale)
+    };
 }
 
 bool Window::should_close() const noexcept {
     return _closed;
-}
-
-std::pair<uint32_t, uint32_t> Window::size() const noexcept {
-    return _actual_size;
 }
 
 wl_surface *Window::surface() noexcept {
