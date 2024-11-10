@@ -36,7 +36,6 @@ private:
     // Optional protocols
     WaylandPointer<wl_shm> _shm; // Only needed for wl-cursor theme cursors
     WaylandPointer<wp_content_type_manager_v1> _content_type_manager; 
-    WaylandPointer<wp_fractional_scale_manager_v1> _fractional_scale_manager;
     WaylandPointer<zxdg_decoration_manager_v1> _decoration_manager;
 
     XkbPointer<xkb_context> _xkb_context;
