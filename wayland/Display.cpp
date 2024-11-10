@@ -22,6 +22,12 @@ static constexpr uint32_t DESIRED_WP_CONTENT_TYPE_V1_VERSION = 1;
 static constexpr uint32_t MINIMUM_WP_CURSOR_SHAPE_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_WP_CURSOR_SHAPE_V1_VERSION = 1;
 
+static constexpr uint32_t MINIMUM_WP_FRACTIONAL_SCALE_V1_VERSION = 1;
+static constexpr uint32_t DESIRED_WP_FRACTIONAL_SCALE_V1_VERSION = 1;
+
+static constexpr uint32_t MINIMUM_WP_VIEWPORTER_VERSION = 1;
+static constexpr uint32_t DESIRED_WP_VIEWPORTER_VERSION = 1;
+
 static constexpr uint32_t MINIMUM_XDG_DECORATION_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_DECORATION_V1_VERSION = 1;
 
@@ -72,6 +78,24 @@ Display::Display() {
                     wl_registry, name, version,
                     &wl_shm_interface,
                     DESIRED_WL_SHM_VERSION
+                ));
+            }
+            else if (!strcmp(wp_fractional_scale_manager_v1_interface.name, interface)
+                && version >= MINIMUM_WP_FRACTIONAL_SCALE_V1_VERSION)
+            {
+                self._fractional_scale_manager.reset(do_bind<wp_fractional_scale_manager_v1>(
+                    wl_registry, name, version,
+                    &wp_fractional_scale_manager_v1_interface,
+                    DESIRED_WP_FRACTIONAL_SCALE_V1_VERSION
+                ));
+            }
+            else if (!strcmp(wp_viewporter_interface.name, interface)
+                && version >= MINIMUM_WP_VIEWPORTER_VERSION)
+            {
+                self._viewporter.reset(do_bind<wp_viewporter>(
+                    wl_registry, name, version,
+                    &wp_viewporter_interface,
+                    DESIRED_WP_VIEWPORTER_VERSION
                 ));
             }
             else if (!strcmp(xdg_wm_base_interface.name, interface)
@@ -148,7 +172,10 @@ Display::Display() {
     if (!_cursor_manager) {
         _cursor_manager = std::make_unique<ThemeCursorManager>(_compositor.get(), _shm.get());
     }
+    
     _xkb_context.reset(xkb_context_new(XKB_CONTEXT_NO_FLAGS));
+
+    _has_fractional_scale = _fractional_scale_manager && _viewporter;
 }
 
 void Display::poll_events() {

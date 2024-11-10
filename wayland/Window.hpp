@@ -42,10 +42,13 @@ private:
 
     // Optional protocols
     WaylandPointer<wp_content_type_v1> _content_type;
+    WaylandPointer<wp_fractional_scale_v1> _fractional_scale;
+    WaylandPointer<wp_viewport> _viewport;
     WaylandPointer<zxdg_toplevel_decoration_v1> _toplevel_decoration;
 
     bool _closed, _fullscreen, _has_server_decorations;
-    int32_t _integer_scale;
+    int32_t _actual_integer_scale, _desired_integer_scale;
+    uint32_t _actual_fractional_scale, _desired_fractional_scale;
 
-    std::pair<uint32_t, uint32_t> _actual_surface_size, _desired_surface_size;
+    std::pair<int32_t, int32_t> _actual_surface_size, _desired_surface_size;
 };
