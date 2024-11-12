@@ -257,9 +257,9 @@ void Swapchain::rebuild(const std::pair<uint32_t, uint32_t>& window_size, VkRend
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
         };
         check_success(vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &image_data.semaphore));
-
-        _rebuild_required = false;
     }
+
+    _rebuild_required = false;
 }
 
 bool Swapchain::rebuild_required() const noexcept {
