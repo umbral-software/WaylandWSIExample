@@ -185,6 +185,14 @@ void Window::keysym(uint32_t keysym, bool, bool, bool alt) noexcept {
     }
 }
 
+void Window::pointer_click(bool is_right_click, bool is_down) noexcept {
+    ImGui::GetIO().AddMouseButtonEvent(is_right_click ? ImGuiMouseButton_Right : ImGuiMouseButton_Left, is_down);
+}
+
+void Window::pointer_motion(float x, float y) noexcept {
+    ImGui::GetIO().AddMousePosEvent(x, y);
+}
+
 void Window::text(std::string_view str) const noexcept {
     fwrite(str.data(), 1, str.size(), stdout);
 }

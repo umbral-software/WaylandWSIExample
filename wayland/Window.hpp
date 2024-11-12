@@ -15,6 +15,8 @@ public:
     Window& operator=(Window&&) noexcept = delete;
 
     void keysym(uint32_t keysym, bool shift, bool ctrl, bool alt) noexcept;
+    void pointer_click(bool is_right_click, bool is_down) noexcept;
+    void pointer_motion(float x, float y) noexcept;
     void text(std::string_view str) const noexcept;
 
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator

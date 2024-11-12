@@ -2,6 +2,9 @@
 
 #include "Display.hpp"
 #include "Seat.hpp"
+#include "Window.hpp"
+
+#include <linux/input-event-codes.h>
 
 Pointer::Pointer(Seat& seat)
     :_display(seat._display)
@@ -22,8 +25,41 @@ Pointer::Pointer(Seat& seat)
             self._cursor->unset_pointer(serial);
             self._focus = nullptr;
         },
-        .motion  = [](void *, wl_pointer *, uint32_t, wl_fixed_t, wl_fixed_t) noexcept {},
-        .button = [](void *, wl_pointer *, uint32_t, uint32_t, uint32_t, uint32_t) noexcept {},
+        .motion  = [](void *data, wl_pointer *, uint32_t, wl_fixed_t x, wl_fixed_t y) noexcept {
+            auto& self = *static_cast<Pointer *>(data);
+            if (self._focus) {
+                self._focus->pointer_motion(wl_fixed_to_double(x), wl_fixed_to_double(y));
+            }
+        },
+        .button = [](void *data, wl_pointer *, uint32_t, uint32_t, uint32_t button, uint32_t state) noexcept {
+            auto& self = *static_cast<Pointer *>(data);
+            if (self._focus) {
+                bool is_right;
+                switch (button) {
+                case BTN_LEFT:
+                    is_right = false;
+                    break;
+                case BTN_RIGHT:
+                    is_right = true;
+                    break;
+                default:
+                    return; // Unknown button
+                }
+
+                bool is_down;
+                switch (state) {
+                case WL_POINTER_BUTTON_STATE_PRESSED:
+                    is_down = true;
+                    break;
+                case WL_POINTER_BUTTON_STATE_RELEASED:
+                    is_down = false;
+                    break;
+                default:
+                    return; // Unknown button
+                }
+                self._focus->pointer_click(is_right, is_down);
+            }
+        },
         .axis = [](void *, wl_pointer *, uint32_t, uint32_t, wl_fixed_t) noexcept {},
         .frame = [](void *, wl_pointer *) noexcept {},
         .axis_source = [](void *, wl_pointer *, uint32_t) noexcept {},
