@@ -22,10 +22,10 @@ public:
     std::pair<uint32_t, uint32_t> buffer_size() const noexcept;
 
     wl_display *display() noexcept;
-
     bool should_close() const noexcept;
-
     wl_surface *surface() noexcept;
+
+    void update_ui();
 
 public:
     static constexpr uint32_t DEFAULT_SCALE_DPI = 120;

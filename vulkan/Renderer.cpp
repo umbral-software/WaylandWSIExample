@@ -3,6 +3,7 @@
 #include "Common.hpp"
 #include "wayland/Window.hpp"
 
+#include <backends/imgui_impl_vulkan.h>
 #include <glm/gtc/reciprocal.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
@@ -547,15 +548,39 @@ Renderer::Renderer(Window& window)
     check_success(vkCreateGraphicsPipelines(d.device, nullptr, 1, &pipeline_create_info, nullptr, &d.pipeline)); // FIXME: PipelineCache
 
     const std::array descriptor_pool_sizes {
+        VkDescriptorPoolSize { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
         VkDescriptorPoolSize { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1 }
     };
     const VkDescriptorPoolCreateInfo descriptor_pool_create_info {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = 1,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = 2,
         .poolSizeCount = descriptor_pool_sizes.size(),
         .pPoolSizes = descriptor_pool_sizes.data()
     };
     check_success(vkCreateDescriptorPool(d.device, &descriptor_pool_create_info, nullptr, &d.descriptor_pool));
+
+    ImGui_ImplVulkan_InitInfo imgui_info {
+        .Instance = d.instance,
+        .PhysicalDevice = _physical_device,
+        .Device = d.device,
+        .QueueFamily = _queue_family_index,
+        .Queue = _queue,
+        .DescriptorPool = d.descriptor_pool,
+        .RenderPass = d.render_pass,
+        .MinImageCount = NUM_FRAMES_IN_FLIGHT,
+        .ImageCount = NUM_FRAMES_IN_FLIGHT,
+        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+        .Subpass = 0,
+        .CheckVkResultFn = check_success
+    };
+    ImGui_ImplVulkan_LoadFunctions([](const char *name, void *self){
+        return vkGetInstanceProcAddr(static_cast<Renderer *>(self)->d.instance, name);
+    }, this);
+    ImGui_ImplVulkan_Init(&imgui_info);
+    ImGui_ImplVulkan_CreateFontsTexture();
+    ImGui_ImplVulkan_NewFrame();
+
     const VkDescriptorSetAllocateInfo descriptor_set_allocate_info {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = d.descriptor_pool,
@@ -654,6 +679,7 @@ Renderer::~Renderer() {
         wait_all_fences();
         _swapchain.destroy(true);
     }
+    ImGui_ImplVulkan_Shutdown();
 }
 
 FrameData& Renderer::frame() noexcept {
@@ -744,6 +770,9 @@ void Renderer::record_command_buffer() {
     vkCmdSetScissor(cb, 0, 1, &scissor);
     vkCmdSetViewport(cb, 0, 1, &viewport);
     vkCmdDrawIndexed(cb, 3, 1, 0, 0, 0);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb);
     vkCmdEndRenderPass(cb);
     check_success(vkEndCommandBuffer(cb));
+
+    ImGui_ImplVulkan_NewFrame();
 }

@@ -2,6 +2,8 @@
 
 #include "Display.hpp"
 
+#include <imgui.h>
+
 #include <cstring>
 
 static constexpr uint32_t DEFAULT_HEIGHT = 600;
@@ -57,6 +59,11 @@ Window::Window(Display& display)
             } else if (self._actual_integer_scale) {
                 wl_surface_set_buffer_scale(self._surface.get(), self._actual_integer_scale);
             }
+
+            ImGui::GetIO().DisplaySize = { 
+                static_cast<float>(self._actual_surface_size.first),
+                static_cast<float>(self._actual_surface_size.second)
+            };
         }
     };
 
@@ -205,6 +212,12 @@ bool Window::should_close() const noexcept {
 
 wl_surface *Window::surface() noexcept {
     return _surface.get();
+}
+
+void Window::update_ui() {
+    ImGui::NewFrame();
+    ImGui::ShowDemoWindow();
+    ImGui::Render();
 }
 
 void Window::toggle_fullscreen() noexcept {

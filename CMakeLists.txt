@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.28)
 project(WaylandExample)
 
+include(FetchContent)
+FetchContent_Declare(imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.5)
+
 find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 
@@ -10,6 +15,7 @@ find_package(Wayland REQUIRED COMPONENTS Client Cursor)
 find_package(WaylandProtocols REQUIRED)
 find_package(WaylandScanner REQUIRED)
 pkg_check_modules(XKB REQUIRED IMPORTED_TARGET xkbcommon)
+FetchContent_MakeAvailable(ImGui)
 
 set(GLSLC_ARGS "--target-env=vulkan1.3" CACHE STRING "Additional arguments for glslc")
 
@@ -41,6 +47,12 @@ function(add_shader_target target)
     add_custom_target(${target} DEPENDS ${all_binaries})
 endfunction()
 
+add_library(ImGui STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp ${imgui_SOURCE_DIR}/imgui_demo.cpp ${imgui_SOURCE_DIR}/imgui_draw.cpp ${imgui_SOURCE_DIR}/imgui_tables.cpp ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp)
+target_include_directories(ImGui PUBLIC ${imgui_SOURCE_DIR})
+target_compile_definitions(ImGui PRIVATE VK_NO_PROTOTYPES)
+
 add_executable(wayland_example main.cpp MappedFd.cpp vk_mem_alloc.cpp volk.c
     vulkan/Common.cpp vulkan/Renderer.cpp vulkan/RendererBase.cpp vulkan/Swapchain.cpp vulkan/SwapchainBase.cpp
     wayland/Display.cpp wayland/Keyboard.cpp wayland/Pointer.cpp wayland/Seat.cpp wayland/Window.cpp
@@ -58,7 +70,7 @@ ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATA
 set_target_properties(wayland_example PROPERTIES CXX_STANDARD 23)
 target_compile_definitions(wayland_example PRIVATE GLM_FORCE_LEFT_HANDED VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
 target_include_directories(wayland_example PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(wayland_example PkgConfig::XKB Wayland::Client Wayland::Cursor)
+target_link_libraries(wayland_example ImGui PkgConfig::XKB Wayland::Client Wayland::Cursor)
 
 add_shader_target(all_shaders main.frag main.vert)
 add_dependencies(wayland_example all_shaders)
