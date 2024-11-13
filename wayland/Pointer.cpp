@@ -26,7 +26,10 @@ Pointer::Pointer(Seat& seat)
         .motion  = [](void *data, wl_pointer *, uint32_t, wl_fixed_t x, wl_fixed_t y) noexcept {
             auto& self = *static_cast<Pointer *>(data);
             if (self._focus) {
-                self._focus->pointer_motion(wl_fixed_to_double(x), wl_fixed_to_double(y));
+                self._focus->pointer_motion(
+                    static_cast<float>(wl_fixed_to_double(x)),
+                    static_cast<float>(wl_fixed_to_double(y))
+                );
             }
         },
         .button = [](void *data, wl_pointer *, uint32_t, uint32_t, uint32_t button, uint32_t state) noexcept {

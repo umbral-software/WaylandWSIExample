@@ -276,11 +276,11 @@ MainWindow::MainWindow(Display& display)
     ,_renderer(*this)
 {}
 
-void MainWindow::key_down(xkb_keysym_t keysym, bool shift, bool ctrl, bool alt) noexcept {
+void MainWindow::key_down(xkb_keysym_t keysym, bool, bool ctrl, bool ) noexcept {
     if (keysym == XKB_KEY_Escape) {
         set_should_close();
     }
-        if (ctrl && keysym == XKB_KEY_Return) {     
+    if (ctrl && keysym == XKB_KEY_Return) {     
         toggle_fullscreen();
     }
 
@@ -290,7 +290,7 @@ void MainWindow::key_down(xkb_keysym_t keysym, bool shift, bool ctrl, bool alt) 
     }
 }
 
-void MainWindow::key_up(xkb_keysym_t keysym, bool ctrl, bool alt, bool shift) noexcept {
+void MainWindow::key_up(xkb_keysym_t keysym, bool, bool, bool) noexcept {
     const auto key = xkb_to_imgui_key(keysym);
     if (key) {
         ImGui::GetIO().AddKeyEvent(key, false);

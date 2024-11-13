@@ -57,26 +57,6 @@ static constexpr std::array<Vertex, 3> VERTICES {{
     {{1.0f,  1.5f, 0.0f}, {   0,   0, 255, 255 }},
 }};
 
-static std::partial_ordering operator<=>(const VkExtent2D& extent, const std::pair<uint32_t, uint32_t>& pair) noexcept {
-    const std::weak_ordering width_comparison = extent.width <=> pair.first;
-    const std::weak_ordering height_comparison = extent.height <=> pair.second;
-
-    if (width_comparison == height_comparison) {
-        return width_comparison;
-    }
-    if (width_comparison == std::weak_ordering::equivalent) {
-        return height_comparison;
-    }
-    if (height_comparison == std::weak_ordering::equivalent) {
-        return width_comparison;
-    }
-    return std::partial_ordering::unordered;
-}
-
-static bool operator==(const VkExtent2D& extent, const std::pair<uint32_t, uint32_t>& pair) noexcept {
-    return std::partial_ordering::equivalent == (extent <=> pair);
-}
-
 static glm::mat4 infinitePerspectiveFovReverse(float fovx, float aspect, float zNear) {
     const float w = glm::cot(0.5f * fovx);
     const float h = w * aspect;

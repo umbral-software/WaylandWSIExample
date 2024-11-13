@@ -20,5 +20,5 @@ int main() {
 
     real_main();
 
-    ImGui::DestroyContext(ImGui::GetCurrentContext());
+    ImGui::DestroyContext(imgui);
 }
