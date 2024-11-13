@@ -3,6 +3,7 @@
 #include "Display.hpp"
 
 #include <imgui.h>
+#include <linux/input-event-codes.h>
 
 #include <cstring>
 
@@ -185,8 +186,35 @@ void Window::keysym(uint32_t keysym, bool, bool, bool alt) noexcept {
     }
 }
 
-void Window::pointer_click(bool is_right_click, bool is_down) noexcept {
-    ImGui::GetIO().AddMouseButtonEvent(is_right_click ? ImGuiMouseButton_Right : ImGuiMouseButton_Left, is_down);
+void Window::pointer_click(uint32_t button, wl_pointer_button_state state) noexcept {
+    ImGuiButtonFlags imgui_button;
+    switch (button) {
+    case BTN_LEFT:
+        imgui_button = ImGuiMouseButton_Left;
+        break;
+    case BTN_RIGHT:
+        imgui_button = ImGuiMouseButton_Right;
+        break;
+    case BTN_MIDDLE:
+        imgui_button = ImGuiMouseButton_Middle;
+        break;
+    default:
+        return; // Unknown button
+    }
+
+    bool is_pressed;
+    switch (state) {
+    case WL_POINTER_BUTTON_STATE_PRESSED:
+        is_pressed = true;
+        break;
+    case WL_POINTER_BUTTON_STATE_RELEASED:
+        is_pressed = false;
+        break;
+    default:
+        return; // Unknown state
+    }
+
+    ImGui::GetIO().AddMouseButtonEvent(imgui_button, is_pressed);
 }
 
 void Window::pointer_motion(float x, float y) noexcept {

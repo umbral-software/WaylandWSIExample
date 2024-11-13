@@ -15,7 +15,7 @@ public:
     Window& operator=(Window&&) noexcept = delete;
 
     void keysym(uint32_t keysym, bool shift, bool ctrl, bool alt) noexcept;
-    void pointer_click(bool is_right_click, bool is_down) noexcept;
+    void pointer_click(uint32_t button, wl_pointer_button_state state) noexcept;
     void pointer_motion(float x, float y) noexcept;
     void text(std::string_view str) const noexcept;
 

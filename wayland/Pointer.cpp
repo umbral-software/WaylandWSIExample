@@ -4,8 +4,6 @@
 #include "Seat.hpp"
 #include "Window.hpp"
 
-#include <linux/input-event-codes.h>
-
 Pointer::Pointer(Seat& seat)
     :_display(seat._display)
     ,_focus(nullptr)
@@ -34,30 +32,7 @@ Pointer::Pointer(Seat& seat)
         .button = [](void *data, wl_pointer *, uint32_t, uint32_t, uint32_t button, uint32_t state) noexcept {
             auto& self = *static_cast<Pointer *>(data);
             if (self._focus) {
-                bool is_right;
-                switch (button) {
-                case BTN_LEFT:
-                    is_right = false;
-                    break;
-                case BTN_RIGHT:
-                    is_right = true;
-                    break;
-                default:
-                    return; // Unknown button
-                }
-
-                bool is_down;
-                switch (state) {
-                case WL_POINTER_BUTTON_STATE_PRESSED:
-                    is_down = true;
-                    break;
-                case WL_POINTER_BUTTON_STATE_RELEASED:
-                    is_down = false;
-                    break;
-                default:
-                    return; // Unknown button
-                }
-                self._focus->pointer_click(is_right, is_down);
+                self._focus->pointer_click(button, static_cast<wl_pointer_button_state>(state));
             }
         },
         .axis = [](void *, wl_pointer *, uint32_t, uint32_t, wl_fixed_t) noexcept {},
