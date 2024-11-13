@@ -53,7 +53,7 @@ add_library(ImGui STATIC
 target_include_directories(ImGui PUBLIC ${imgui_SOURCE_DIR})
 target_compile_definitions(ImGui PRIVATE VK_NO_PROTOTYPES)
 
-add_executable(wayland_example main.cpp MappedFd.cpp vk_mem_alloc.cpp volk.c
+add_executable(wayland_example main.cpp MainWindow.cpp MappedFd.cpp vk_mem_alloc.cpp volk.c
     vulkan/Common.cpp vulkan/Renderer.cpp vulkan/RendererBase.cpp vulkan/Swapchain.cpp vulkan/SwapchainBase.cpp
     wayland/Display.cpp wayland/Keyboard.cpp wayland/Pointer.cpp wayland/Seat.cpp wayland/Window.cpp
     wayland/cursor/CursorBase.cpp wayland/cursor/CursorManagerBase.cpp

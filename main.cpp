@@ -1,6 +1,5 @@
-#include "vulkan/Renderer.hpp"
+#include "MainWindow.hpp"
 #include "wayland/Display.hpp"
-#include "wayland/Window.hpp"
 
 #include <imgui.h>
 #include <backends/imgui_impl_vulkan.h>
@@ -11,13 +10,11 @@ int main() {
 
     {
         Display display;
-        Window window(display);
-        Renderer renderer(window);
+        MainWindow window(display);
 
         while (!window.should_close()) {
             display.poll_events();
-            window.update_ui();
-            renderer.render();
+            window.render();
         }
     }
 

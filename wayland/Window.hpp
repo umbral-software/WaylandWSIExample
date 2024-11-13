@@ -16,22 +16,21 @@ public:
     Window& operator=(const Window&) = delete;
     Window& operator=(Window&&) noexcept = delete;
 
-    void key_down(xkb_keysym_t keysym) noexcept;
-    void key_up(xkb_keysym_t keysym) noexcept;
-    void key_modifiers(bool shift, bool ctrl, bool alt) noexcept;
-    void pointer_click(uint32_t button, wl_pointer_button_state state) noexcept;
-    void pointer_motion(float x, float y) noexcept;
-    void text(const std::string& str) const noexcept;
+    virtual void key_down(xkb_keysym_t keysym) noexcept = 0;
+    virtual void key_up(xkb_keysym_t keysym) noexcept = 0;
+    virtual void key_modifiers(bool shift, bool ctrl, bool alt) noexcept = 0;
+    virtual void pointer_click(uint32_t button, wl_pointer_button_state state) noexcept = 0;
+    virtual void pointer_motion(float x, float y) noexcept = 0;
+    virtual void reconfigure() noexcept = 0;
+    virtual void text(const std::string& str) const noexcept = 0;
 
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
     uint32_t buffer_scale() const noexcept;
     std::pair<uint32_t, uint32_t> buffer_size() const noexcept;
-
     wl_display *display() noexcept;
     bool should_close() const noexcept;
     wl_surface *surface() noexcept;
-
-    void update_ui();
+    std::pair<uint32_t, uint32_t> surface_size() const noexcept;
 
 public:
     static constexpr uint32_t DEFAULT_SCALE_DPI = 120;
