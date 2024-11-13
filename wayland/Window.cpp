@@ -171,9 +171,12 @@ uint32_t Window::buffer_scale() const noexcept {
 }
 
 std::pair<uint32_t, uint32_t> Window::buffer_size() const noexcept {
+    const auto scale = static_cast<float>(buffer_scale()) / DEFAULT_SCALE_DPI;
+    // Note: Fractional pixel values should be rounded halfway away from zero for toplevel windows
+    // That matches the behaviour of std::round
     return {
-        surface_size().first * buffer_scale() / DEFAULT_SCALE_DPI,
-        surface_size().second * buffer_scale() / DEFAULT_SCALE_DPI
+        std::round(static_cast<float>(surface_size().first) * scale),
+        std::round(static_cast<float>(surface_size().second) * scale)
     };
 }
 
