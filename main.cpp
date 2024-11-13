@@ -4,19 +4,21 @@
 #include <imgui.h>
 #include <backends/imgui_impl_vulkan.h>
 
+static void real_main() {       
+    Display display;
+    MainWindow window(display);
+
+    while (!window.should_close()) {
+        display.poll_events();
+        window.render();
+    }
+}
+
 int main() {
     IMGUI_CHECKVERSION();
     const auto imgui = ImGui::CreateContext();
 
-    {
-        Display display;
-        MainWindow window(display);
-
-        while (!window.should_close()) {
-            display.poll_events();
-            window.render();
-        }
-    }
+    real_main();
 
     ImGui::DestroyContext(ImGui::GetCurrentContext());
 }
