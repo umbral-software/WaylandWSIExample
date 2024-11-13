@@ -280,7 +280,7 @@ void MainWindow::key_down(xkb_keysym_t keysym, bool shift, bool ctrl, bool alt) 
     if (keysym == XKB_KEY_Escape) {
         set_should_close();
     }
-    if (ctrl && keysym == XKB_KEY_Return) {     
+        if (ctrl && keysym == XKB_KEY_Return) {     
         toggle_fullscreen();
     }
 
@@ -355,6 +355,8 @@ void MainWindow::reconfigure() noexcept {
         static_cast<float>(surface_size().first),
         static_cast<float>(surface_size().second)
     };
+
+    _renderer.resize(buffer_size());
 }
 
 void MainWindow::text(const std::string& str) const noexcept {

@@ -11,6 +11,7 @@ public:
 
     FrameData& frame() noexcept;
     void render();
+    void resize(const std::pair<uint32_t, uint32_t>& size);
 
 private:
     void record_command_buffer();

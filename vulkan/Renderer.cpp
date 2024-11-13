@@ -687,9 +687,9 @@ FrameData& Renderer::frame() noexcept {
 }
 
 void Renderer::render() {
-    if (_swapchain.rebuild_required() || _window.buffer_size() != _swapchain.size()) {
-        check_success(wait_all_fences()); // Can this be reduced?
-        _swapchain.rebuild(_window.buffer_size(), d.render_pass);
+    if (_swapchain.rebuild_required()) {
+        check_success(wait_all_fences());
+        _swapchain.rebuild(_swapchain.size(), d.render_pass);
     }
 
     _frame_index = (_frame_index + 1) % d.frame_data.size();
@@ -713,6 +713,11 @@ void Renderer::render() {
 
         _swapchain.present(_queue);
     }
+}
+
+void Renderer::resize(const std::pair<uint32_t, uint32_t>& size) {
+    check_success(wait_all_fences());
+    _swapchain.rebuild({size.first, size.second}, d.render_pass);
 }
 
 void Renderer::record_command_buffer() {
