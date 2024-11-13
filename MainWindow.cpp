@@ -351,7 +351,14 @@ void MainWindow::pointer_motion(float x, float y) noexcept {
 }
 
 void MainWindow::reconfigure() noexcept {
-    ImGui::GetIO().DisplaySize = { 
+    auto& io = ImGui::GetIO();
+    const auto scale = static_cast<float>(buffer_scale()) / DEFAULT_SCALE_DPI;
+
+    io.DisplayFramebufferScale = {
+        scale,
+        scale
+    };
+    io.DisplaySize = { 
         static_cast<float>(surface_size().first),
         static_cast<float>(surface_size().second)
     };
