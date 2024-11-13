@@ -2,6 +2,8 @@
 
 #include "WaylandPointer.hpp"
 
+#include <xkbcommon/xkbcommon.h>
+
 class Display;
 
 class Window {
@@ -14,10 +16,12 @@ public:
     Window& operator=(const Window&) = delete;
     Window& operator=(Window&&) noexcept = delete;
 
-    void keysym(uint32_t keysym, bool shift, bool ctrl, bool alt) noexcept;
+    void key_down(xkb_keysym_t keysym) noexcept;
+    void key_up(xkb_keysym_t keysym) noexcept;
+    void key_modifiers(bool shift, bool ctrl, bool alt) noexcept;
     void pointer_click(uint32_t button, wl_pointer_button_state state) noexcept;
     void pointer_motion(float x, float y) noexcept;
-    void text(std::string_view str) const noexcept;
+    void text(const std::string& str) const noexcept;
 
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
     uint32_t buffer_scale() const noexcept;
