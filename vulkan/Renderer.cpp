@@ -759,6 +759,5 @@ void Renderer::record_command_buffer() {
     vkCmdEndRenderPass(cb);
     check_success(vkEndCommandBuffer(cb));
 
-    printf("%f %f\n", ImGui::GetDrawData()->FramebufferScale.x, ImGui::GetDrawData()->FramebufferScale.y);
     ImGui_ImplVulkan_NewFrame();
 }
