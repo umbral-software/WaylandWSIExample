@@ -69,7 +69,7 @@ Window::Window(Display& display)
         .close = [](void *data, xdg_toplevel *) noexcept {
             auto& self = *static_cast<Window*>(data);
 
-            self._closed = true;
+            self.set_should_close();
         },
         .configure_bounds = [](void *, xdg_toplevel *, int32_t, int32_t) noexcept {
             
@@ -190,6 +190,10 @@ std::pair<uint32_t, uint32_t> Window::surface_size() const noexcept {
         static_cast<uint32_t>(_actual_surface_size.first),
         static_cast<uint32_t>(_actual_surface_size.second)
     };
+}
+
+void Window::set_should_close() noexcept {
+    _closed = true;
 }
 
 void Window::toggle_fullscreen() noexcept {

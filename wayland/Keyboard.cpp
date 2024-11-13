@@ -62,7 +62,7 @@ Keyboard::Keyboard(Seat& seat)
                     const auto num_syms = xkb_state_key_get_syms(self._state.get(), xkb_key, &syms);
 
                     for (auto i = 0; i < num_syms; ++i) {
-                        self._focus->key_down(syms[i]);
+                        self._focus->key_down(syms[i], shift, ctrl, alt);
                     }
 
                     const size_t chars = static_cast<size_t>(1 + xkb_state_key_get_utf8(self._state.get(), xkb_key, nullptr, 0));
@@ -79,7 +79,7 @@ Keyboard::Keyboard(Seat& seat)
                     const auto num_syms = xkb_state_key_get_syms(self._state.get(), xkb_key, &syms);
 
                     for (auto i = 0; i < num_syms; ++i) {
-                        self._focus->key_up(syms[i]);
+                        self._focus->key_up(syms[i], shift, ctrl, alt);
                     }
                     break;
                 }

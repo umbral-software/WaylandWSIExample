@@ -276,18 +276,23 @@ MainWindow::MainWindow(Display& display)
     ,_renderer(*this)
 {}
 
-void MainWindow::key_down(xkb_keysym_t keysym) noexcept {
+void MainWindow::key_down(xkb_keysym_t keysym, bool shift, bool ctrl, bool alt) noexcept {
+    if (keysym == XKB_KEY_Escape) {
+        set_should_close();
+    }
+    if (ctrl && keysym == XKB_KEY_Return) {     
+        toggle_fullscreen();
+    }
+
     const auto key = xkb_to_imgui_key(keysym);
     if (key) {
-        printf("0x%x DOWN\n", key);
         ImGui::GetIO().AddKeyEvent(key, true);
     }
 }
 
-void MainWindow::key_up(xkb_keysym_t keysym) noexcept {
+void MainWindow::key_up(xkb_keysym_t keysym, bool ctrl, bool alt, bool shift) noexcept {
     const auto key = xkb_to_imgui_key(keysym);
     if (key) {
-        printf("0x%x UP\n", key);
         ImGui::GetIO().AddKeyEvent(key, false);
     }
 }
@@ -338,7 +343,6 @@ void MainWindow::pointer_click(uint32_t button, wl_pointer_button_state state) n
         return; // Unknown state
     }
 
-    printf("%d\n", imgui_button);
     ImGui::GetIO().AddMouseButtonEvent(imgui_button, is_pressed);
 }
 

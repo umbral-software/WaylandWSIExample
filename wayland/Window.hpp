@@ -16,8 +16,8 @@ public:
     Window& operator=(const Window&) = delete;
     Window& operator=(Window&&) noexcept = delete;
 
-    virtual void key_down(xkb_keysym_t keysym) noexcept = 0;
-    virtual void key_up(xkb_keysym_t keysym) noexcept = 0;
+    virtual void key_down(xkb_keysym_t keysym, bool shift, bool ctrl, bool alt) noexcept = 0;
+    virtual void key_up(xkb_keysym_t keysym, bool shift, bool ctrl, bool alt) noexcept = 0;
     virtual void key_modifiers(bool shift, bool ctrl, bool alt) noexcept = 0;
     virtual void pointer_click(uint32_t button, wl_pointer_button_state state) noexcept = 0;
     virtual void pointer_motion(float x, float y) noexcept = 0;
@@ -35,7 +35,8 @@ public:
 public:
     static constexpr uint32_t DEFAULT_SCALE_DPI = 120;
 
-private:
+protected:
+    void set_should_close() noexcept;
     void toggle_fullscreen() noexcept;
 
 private:
