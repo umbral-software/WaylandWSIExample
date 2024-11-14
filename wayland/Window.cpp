@@ -158,6 +158,15 @@ Window::Window(Display& display)
     }
 
     wl_surface_commit(_surface.get());
+
+    _cursor = nullptr;
+}
+
+void Window::set_cursor(CursorBase *cursor) {
+    _cursor = cursor;
+    if (_cursor) {
+        _cursor->set_cursor_type(CursorType::Default);
+    }
 }
 
 wl_display *Window::display() noexcept {
@@ -193,6 +202,12 @@ std::pair<uint32_t, uint32_t> Window::surface_size() const noexcept {
         static_cast<uint32_t>(_actual_surface_size.first),
         static_cast<uint32_t>(_actual_surface_size.second)
     };
+}
+
+void Window::set_cursor_type(CursorType type) {
+    if (_cursor) {
+        _cursor->set_cursor_type(type);
+    }
 }
 
 void Window::set_should_close() noexcept {

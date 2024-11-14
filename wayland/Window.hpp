@@ -1,6 +1,7 @@
 #pragma once
 
 #include "WaylandPointer.hpp"
+#include "cursor/CursorBase.hpp"
 
 #include <xkbcommon/xkbcommon.h>
 
@@ -24,6 +25,8 @@ public:
     virtual void reconfigure() noexcept = 0;
     virtual void text(const std::string& str) const noexcept = 0;
 
+    void set_cursor(CursorBase *cursor);
+
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
     uint32_t buffer_scale() const noexcept;
     std::pair<uint32_t, uint32_t> buffer_size() const noexcept;
@@ -36,6 +39,7 @@ public:
     static constexpr uint32_t DEFAULT_SCALE_DPI = 120;
 
 protected:
+    void set_cursor_type(CursorType type);
     void set_should_close() noexcept;
     void toggle_fullscreen() noexcept;
 
@@ -57,4 +61,6 @@ private:
     uint32_t _actual_fractional_scale, _desired_fractional_scale;
 
     std::pair<int32_t, int32_t> _actual_surface_size, _desired_surface_size;
+
+    CursorBase *_cursor;
 };

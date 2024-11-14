@@ -4,6 +4,27 @@
 #include <linux/input-event-codes.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
+static constexpr CursorType imgui_cursor_to_type(ImGuiMouseCursor cursor) {
+    switch (cursor) {
+    case ImGuiMouseCursor_Arrow:
+        return CursorType::Default;
+    case ImGuiMouseCursor_TextInput:
+        return CursorType::Text;
+    case ImGuiMouseCursor_ResizeNS:
+        return CursorType::NSResize;
+    case ImGuiMouseCursor_ResizeEW:
+        return CursorType::EWResize;
+    case ImGuiMouseCursor_ResizeNESW:
+        return CursorType::NESWResize;
+    case ImGuiMouseCursor_ResizeNWSE:
+        return CursorType::NWSEResize;
+    case ImGuiMouseCursor_NotAllowed:
+        return CursorType::NotAllowed;
+    default:
+        return CursorType::Default;
+    }
+}
+
 static constexpr ImGuiKey xkb_to_imgui_key(xkb_keysym_t keysym) {
     switch (keysym) {
     case XKB_KEY_Tab:
@@ -274,7 +295,9 @@ static constexpr ImGuiKey xkb_to_imgui_key(xkb_keysym_t keysym) {
 MainWindow::MainWindow(Display& display)
     :Window(display)
     ,_renderer(*this)
-{}
+{
+    ImGui::GetIO().BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
+}
 
 void MainWindow::key_down(xkb_keysym_t keysym, bool, bool ctrl, bool ) noexcept {
     if (keysym == XKB_KEY_Escape) {
@@ -374,6 +397,7 @@ void MainWindow::render() {
     ImGui::NewFrame();
     ImGui::ShowDemoWindow();
     ImGui::Render();
+    set_cursor_type(imgui_cursor_to_type(ImGui::GetMouseCursor()));
 
     _renderer.render();
 }

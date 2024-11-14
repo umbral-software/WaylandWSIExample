@@ -1,7 +1,6 @@
 #include "ThemeCursorManager.hpp"
 #include "ThemeCursor.hpp"
 
-static constexpr char DEFAULT_CURSOR_NAME[] = "default";
 static constexpr int DEFAULT_CURSOR_SIZE = 16;
 
 static int get_cursor_size() {
@@ -26,5 +25,6 @@ ThemeCursorManager::ThemeCursorManager(wl_compositor *compositor, wl_shm *shm)
 }
 
 std::unique_ptr<CursorBase> ThemeCursorManager::get_cursor(wl_pointer *pointer) {
-    return std::make_unique<ThemeCursor>(wl_cursor_theme_get_cursor(_theme.get(), DEFAULT_CURSOR_NAME), pointer, wl_compositor_create_surface(_compositor));
+    return std::make_unique<ThemeCursor>(_theme.get(), pointer, wl_compositor_create_surface(_compositor));
 }
+
