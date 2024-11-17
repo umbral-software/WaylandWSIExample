@@ -3,7 +3,7 @@
 #include "vulkan/Renderer.hpp"
 #include "wayland/Window.hpp"
 
-class MainWindow : public Window {
+class MainWindow final : public Window {
 public:
     explicit MainWindow(Display& display);
 
