@@ -54,7 +54,6 @@ add_executable(wayland_example main.cpp MainWindow.cpp MappedFd.cpp vk_mem_alloc
     wayland/cursor/shape/ShapeCursor.cpp wayland/cursor/shape/ShapeCursorManager.cpp
     wayland/cursor/theme/ThemeCursor.cpp wayland/cursor/theme/ThemeCursorManager.cpp
     ${imgui_SOURCE_DIR}/imgui.cpp ${imgui_SOURCE_DIR}/imgui_demo.cpp ${imgui_SOURCE_DIR}/imgui_draw.cpp ${imgui_SOURCE_DIR}/imgui_tables.cpp ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
 ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
 ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/stable/viewporter/viewporter.xml BASENAME viewporter)
@@ -68,5 +67,8 @@ target_compile_definitions(wayland_example PRIVATE GLM_FORCE_LEFT_HANDED VK_NO_P
 target_include_directories(wayland_example PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${imgui_SOURCE_DIR})
 target_link_libraries(wayland_example PkgConfig::XKB Wayland::Client Wayland::Cursor)
 
-add_shader_target(all_shaders main.frag main.vert)
+add_shader_target(all_shaders
+    ui.frag ui.vert
+    world.frag world.vert
+)
 add_dependencies(wayland_example all_shaders)
