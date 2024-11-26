@@ -14,6 +14,8 @@ static const char *cursor_type_to_name(CursorType type) {
         return "nesw-resize";
     case CursorType::NWSEResize:
         return "nwse-resize";
+    case CursorType::NotAllowed:
+        return "not-allowed";
     default:
         return "default";
     }

@@ -14,6 +14,8 @@ static wp_cursor_shape_device_v1_shape cursor_type_to_shape(CursorType type) {
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NESW_RESIZE;
     case CursorType::NWSEResize:
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NWSE_RESIZE;
+    case CursorType::NotAllowed:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NOT_ALLOWED;
     default:
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
     }
