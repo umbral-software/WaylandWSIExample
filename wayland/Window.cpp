@@ -159,14 +159,18 @@ Window::Window(Display& display)
 
     wl_surface_commit(_surface.get());
 
-    _cursor = nullptr;
+    _cursor_type = CursorType::Default;
 }
 
-void Window::set_cursor(CursorBase *cursor) {
-    _cursor = cursor;
-    if (_cursor) {
-        _cursor->set_cursor_type(CursorType::Default);
+void Window::register_cursor(CursorBase *cursor) {
+    if (cursor) {
+        _cursors.emplace(cursor);
+        cursor->set_cursor_type(_cursor_type);
     }
+}
+
+void Window::unregister_cursor(CursorBase *cursor) {
+    _cursors.erase(cursor);
 }
 
 wl_display *Window::display() noexcept {
@@ -205,8 +209,8 @@ std::pair<uint32_t, uint32_t> Window::surface_size() const noexcept {
 }
 
 void Window::set_cursor_type(CursorType type) {
-    if (_cursor) {
-        _cursor->set_cursor_type(type);
+    for (auto cursor : _cursors) {
+        cursor->set_cursor_type(type);
     }
 }
 

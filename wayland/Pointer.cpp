@@ -15,13 +15,13 @@ Pointer::Pointer(Seat& seat)
             if (surface) {
                 self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
                 self._cursor->enter(serial);
-                self._focus->set_cursor(self._cursor.get());
+                self._focus->register_cursor(self._cursor.get());
             }
         },
         .leave = [](void *data, wl_pointer *, uint32_t, wl_surface *) noexcept {
             auto& self = *static_cast<Pointer *>(data);
 
-            self._focus->set_cursor(nullptr);
+            self._focus->unregister_cursor(self._cursor.get());
             self._cursor->leave();
             self._focus = nullptr;
         },

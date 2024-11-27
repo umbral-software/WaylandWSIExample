@@ -5,6 +5,8 @@
 
 #include <xkbcommon/xkbcommon.h>
 
+#include <unordered_set>
+
 class Display;
 
 class Window {
@@ -25,7 +27,8 @@ public:
     virtual void reconfigure() noexcept = 0;
     virtual void text(const std::string& str) const noexcept = 0;
 
-    void set_cursor(CursorBase *cursor);
+    void register_cursor(CursorBase *cursor);
+    void unregister_cursor(CursorBase *cursor);
 
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
     uint32_t buffer_scale() const noexcept;
@@ -62,5 +65,6 @@ private:
 
     std::pair<int32_t, int32_t> _actual_surface_size, _desired_surface_size;
 
-    CursorBase *_cursor;
+    std::unordered_set<CursorBase *> _cursors;
+    CursorType _cursor_type;
 };

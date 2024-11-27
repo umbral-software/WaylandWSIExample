@@ -5,6 +5,14 @@
 #include <cstdint>
 
 class CursorBase {
+protected:
+    CursorBase() = default;
+    CursorBase(const CursorBase&) = delete;
+    CursorBase(CursorBase&&) noexcept = delete;
+
+    CursorBase& operator=(CursorBase&) = delete;
+    CursorBase& operator=(CursorBase&&) noexcept = delete;
+
 public:
     virtual ~CursorBase();
 
