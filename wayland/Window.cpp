@@ -2,8 +2,6 @@
 
 #include "Display.hpp"
 
-#include <cstring>
-
 static constexpr uint32_t DEFAULT_HEIGHT = 600;
 static constexpr uint32_t DEFAULT_WIDTH = 800;
 static constexpr char WINDOW_TITLE[] = "Wayland Example";
@@ -57,6 +55,8 @@ Window::Window(Display& display)
             } else if (self._actual_integer_scale) {
                 wl_surface_set_buffer_scale(self._surface.get(), self._actual_integer_scale);
             }
+
+            self.reconfigure();
         }
     };
 
@@ -69,7 +69,7 @@ Window::Window(Display& display)
         .close = [](void *data, xdg_toplevel *) noexcept {
             auto& self = *static_cast<Window*>(data);
 
-            self._closed = true;
+            self.set_should_close();
         },
         .configure_bounds = [](void *, xdg_toplevel *, int32_t, int32_t) noexcept {
             
@@ -158,28 +158,19 @@ Window::Window(Display& display)
     }
 
     wl_surface_commit(_surface.get());
-    wl_display_roundtrip(_display._display.get());
+
+    _cursor_type = CursorType::Default;
 }
 
-void Window::keysym(uint32_t keysym, bool, bool, bool alt) noexcept {
-    switch (keysym) {
-    case XKB_KEY_Return:
-        if (alt) {
-            toggle_fullscreen();
-        } else {
-            std::putchar('\n');
-        }
-        break;
-    case XKB_KEY_Escape:
-        _closed = true;
-        break;
-    default:
-        break;
+void Window::register_cursor(CursorBase *cursor) {
+    if (cursor) {
+        _cursors.emplace(cursor);
+        cursor->set_cursor_type(_cursor_type);
     }
 }
 
-void Window::text(std::string_view str) const noexcept {
-    fwrite(str.data(), 1, str.size(), stdout);
+void Window::unregister_cursor(CursorBase *cursor) {
+    _cursors.erase(cursor);
 }
 
 wl_display *Window::display() noexcept {
@@ -193,9 +184,12 @@ uint32_t Window::buffer_scale() const noexcept {
 }
 
 std::pair<uint32_t, uint32_t> Window::buffer_size() const noexcept {
+    const auto scale = static_cast<float>(buffer_scale()) / DEFAULT_SCALE_DPI;
+    // Note: Fractional pixel values should be rounded halfway away from zero for toplevel windows
+    // That matches the behaviour of std::round
     return {
-        static_cast<uint32_t>(_actual_surface_size.first) * buffer_scale() / DEFAULT_SCALE_DPI,
-        static_cast<uint32_t>(_actual_surface_size.second) * buffer_scale() / DEFAULT_SCALE_DPI
+        std::round(static_cast<float>(surface_size().first) * scale),
+        std::round(static_cast<float>(surface_size().second) * scale)
     };
 }
 
@@ -205,6 +199,23 @@ bool Window::should_close() const noexcept {
 
 wl_surface *Window::surface() noexcept {
     return _surface.get();
+}
+
+std::pair<uint32_t, uint32_t> Window::surface_size() const noexcept {
+    return {
+        static_cast<uint32_t>(_actual_surface_size.first),
+        static_cast<uint32_t>(_actual_surface_size.second)
+    };
+}
+
+void Window::set_cursor_type(CursorType type) {
+    for (auto cursor : _cursors) {
+        cursor->set_cursor_type(type);
+    }
+}
+
+void Window::set_should_close() noexcept {
+    _closed = true;
 }
 
 void Window::toggle_fullscreen() noexcept {

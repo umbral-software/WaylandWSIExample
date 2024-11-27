@@ -1,14 +1,24 @@
-#include "vulkan/Renderer.hpp"
+#include "MainWindow.hpp"
 #include "wayland/Display.hpp"
-#include "wayland/Window.hpp"
 
-int main() {
+#include <imgui.h>
+#include <backends/imgui_impl_vulkan.h>
+
+static void real_main() {       
     Display display;
-    Window window(display);
-    Renderer renderer(window);
+    MainWindow window(display);
 
     while (!window.should_close()) {
         display.poll_events();
-        renderer.render();
+        window.render();
     }
+}
+
+int main() {
+    IMGUI_CHECKVERSION();
+    const auto imgui = ImGui::CreateContext();
+
+    real_main();
+
+    ImGui::DestroyContext(imgui);
 }

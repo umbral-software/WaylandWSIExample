@@ -10,6 +10,6 @@ public:
     virtual std::unique_ptr<CursorBase> get_cursor(wl_pointer *pointer) override;
 private:
     wl_compositor *_compositor;
-
+    
     WaylandPointer<wl_cursor_theme> _theme;
 };

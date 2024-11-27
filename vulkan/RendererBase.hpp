@@ -10,6 +10,9 @@ struct FrameData {
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;
 
+    VkBuffer ui_index_buffer, ui_vertex_buffer;
+    VmaAllocation ui_index_allocation, ui_vertex_allocation;
+
     VkFence fence;
     VkSemaphore semaphore;
 };
@@ -24,8 +27,6 @@ protected:
     RendererBase& operator=(const RendererBase&) = delete;
     RendererBase& operator=(RendererBase&&) noexcept = delete;
 
-    VkResult wait_all_fences() const noexcept;
-
     struct {
         VkInstance instance;
         VkSurfaceKHR surface;
@@ -33,16 +34,27 @@ protected:
         VkDevice device;
         VmaAllocator allocator;
 
-        VkDescriptorSetLayout descriptor_set_layout;
-        VkPipelineLayout pipeline_layout;
+        VkDescriptorSetLayout ui_descriptor_set_layout, world_descriptor_set_layout;
+        VkPipelineLayout world_pipeline_layout, ui_pipeline_layout;
         VkRenderPass render_pass;
+        VkPipeline world_pipeline, ui_pipeline;
 
         VkDescriptorPool descriptor_pool;
-        VkDescriptorSet descriptor_set;
-        VkPipeline pipeline;
+        VkDescriptorSet world_descriptor_set, ui_descriptor_set;
 
-        VkBuffer index_buffer, vertex_buffer, uniform_buffer;
-        VmaAllocation index_allocation, vertex_allocation, uniform_allocation;
+        VkSampler bilinear_sampler;
+
+        VkCommandPool staging_command_pool;
+        VkFence staging_fence;
+        VkBuffer staging_buffer;
+        VmaAllocation staging_allocation;
+
+        VkBuffer world_index_buffer, world_vertex_buffer, world_uniform_buffer;
+        VmaAllocation world_index_allocation, world_vertex_allocation, world_uniform_allocation;
+
+        VkImage ui_font_image;
+        VmaAllocation ui_font_allocation;
+        VkImageView ui_font_image_view;
 
         std::array<FrameData, NUM_FRAMES_IN_FLIGHT> frame_data;
     } d;

@@ -1,6 +1,12 @@
 #pragma once
 
+#include "MouseWheelAxis.hpp"
 #include "WaylandPointer.hpp"
+#include "cursor/CursorBase.hpp"
+
+#include <xkbcommon/xkbcommon.h>
+
+#include <unordered_set>
 
 class Display;
 
@@ -14,23 +20,32 @@ public:
     Window& operator=(const Window&) = delete;
     Window& operator=(Window&&) noexcept = delete;
 
-    void keysym(uint32_t keysym, bool shift, bool ctrl, bool alt) noexcept;
-    void text(std::string_view str) const noexcept;
+    virtual void key_down(xkb_keysym_t keysym, bool shift, bool ctrl, bool alt) noexcept = 0;
+    virtual void key_up(xkb_keysym_t keysym, bool shift, bool ctrl, bool alt) noexcept = 0;
+    virtual void key_modifiers(bool shift, bool ctrl, bool alt) noexcept = 0;
+    virtual void pointer_click(uint32_t button, wl_pointer_button_state state) noexcept = 0;
+    virtual void pointer_motion(float x, float y) noexcept = 0;
+    virtual void reconfigure() noexcept = 0;
+    virtual void scroll(MouseWheelAxis axis, float distance) noexcept = 0;
+    virtual void text(const std::string& str) const noexcept = 0;
+
+    void register_cursor(CursorBase *cursor);
+    void unregister_cursor(CursorBase *cursor);
 
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
     uint32_t buffer_scale() const noexcept;
     std::pair<uint32_t, uint32_t> buffer_size() const noexcept;
-
     wl_display *display() noexcept;
-
     bool should_close() const noexcept;
-
     wl_surface *surface() noexcept;
+    std::pair<uint32_t, uint32_t> surface_size() const noexcept;
 
 public:
     static constexpr uint32_t DEFAULT_SCALE_DPI = 120;
 
-private:
+protected:
+    void set_cursor_type(CursorType type);
+    void set_should_close() noexcept;
     void toggle_fullscreen() noexcept;
 
 private:
@@ -51,4 +66,7 @@ private:
     uint32_t _actual_fractional_scale, _desired_fractional_scale;
 
     std::pair<int32_t, int32_t> _actual_surface_size, _desired_surface_size;
+
+    std::unordered_set<CursorBase *> _cursors;
+    CursorType _cursor_type;
 };

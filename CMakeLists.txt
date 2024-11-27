@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.28)
 project(WaylandExample)
 
+include(FetchContent)
+FetchContent_Declare(imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.5)
+
 find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 
@@ -10,6 +15,7 @@ find_package(Wayland REQUIRED COMPONENTS Client Cursor)
 find_package(WaylandProtocols REQUIRED)
 find_package(WaylandScanner REQUIRED)
 pkg_check_modules(XKB REQUIRED IMPORTED_TARGET xkbcommon)
+FetchContent_MakeAvailable(ImGui)
 
 set(GLSLC_ARGS "--target-env=vulkan1.3" CACHE STRING "Additional arguments for glslc")
 
@@ -41,12 +47,13 @@ function(add_shader_target target)
     add_custom_target(${target} DEPENDS ${all_binaries})
 endfunction()
 
-add_executable(wayland_example main.cpp MappedFd.cpp vk_mem_alloc.cpp volk.c
+add_executable(wayland_example main.cpp MainWindow.cpp MappedFd.cpp vk_mem_alloc.cpp volk.c
     vulkan/Common.cpp vulkan/Renderer.cpp vulkan/RendererBase.cpp vulkan/Swapchain.cpp vulkan/SwapchainBase.cpp
     wayland/Display.cpp wayland/Keyboard.cpp wayland/Pointer.cpp wayland/Seat.cpp wayland/Window.cpp
     wayland/cursor/CursorBase.cpp wayland/cursor/CursorManagerBase.cpp
     wayland/cursor/shape/ShapeCursor.cpp wayland/cursor/shape/ShapeCursorManager.cpp
     wayland/cursor/theme/ThemeCursor.cpp wayland/cursor/theme/ThemeCursorManager.cpp
+    ${imgui_SOURCE_DIR}/imgui.cpp ${imgui_SOURCE_DIR}/imgui_demo.cpp ${imgui_SOURCE_DIR}/imgui_draw.cpp ${imgui_SOURCE_DIR}/imgui_tables.cpp ${imgui_SOURCE_DIR}/imgui_widgets.cpp
 )
 ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)
 ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/stable/viewporter/viewporter.xml BASENAME viewporter)
@@ -57,8 +64,11 @@ ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATA
 ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml BASENAME xdg-decoration)
 set_target_properties(wayland_example PROPERTIES CXX_STANDARD 23)
 target_compile_definitions(wayland_example PRIVATE GLM_FORCE_LEFT_HANDED VK_NO_PROTOTYPES VK_USE_PLATFORM_WAYLAND_KHR)
-target_include_directories(wayland_example PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(wayland_example PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${imgui_SOURCE_DIR})
 target_link_libraries(wayland_example PkgConfig::XKB Wayland::Client Wayland::Cursor)
 
-add_shader_target(all_shaders main.frag main.vert)
+add_shader_target(all_shaders
+    ui.frag ui.vert
+    world.frag world.vert
+)
 add_dependencies(wayland_example all_shaders)

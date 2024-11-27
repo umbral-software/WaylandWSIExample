@@ -2,6 +2,7 @@
 
 #include "Display.hpp"
 #include "Seat.hpp"
+#include "Window.hpp"
 
 Pointer::Pointer(Seat& seat)
     :_display(seat._display)
@@ -13,18 +14,45 @@ Pointer::Pointer(Seat& seat)
 
             if (surface) {
                 self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
-                self._cursor->set_pointer(serial);
+                self._cursor->enter(serial);
+                self._focus->register_cursor(self._cursor.get());
             }
         },
-        .leave = [](void *data, wl_pointer *, uint32_t serial, wl_surface *) noexcept {
+        .leave = [](void *data, wl_pointer *, uint32_t, wl_surface *) noexcept {
             auto& self = *static_cast<Pointer *>(data);
 
-            self._cursor->unset_pointer(serial);
+            self._focus->unregister_cursor(self._cursor.get());
+            self._cursor->leave();
             self._focus = nullptr;
         },
-        .motion  = [](void *, wl_pointer *, uint32_t, wl_fixed_t, wl_fixed_t) noexcept {},
-        .button = [](void *, wl_pointer *, uint32_t, uint32_t, uint32_t, uint32_t) noexcept {},
-        .axis = [](void *, wl_pointer *, uint32_t, uint32_t, wl_fixed_t) noexcept {},
+        .motion  = [](void *data, wl_pointer *, uint32_t, wl_fixed_t x, wl_fixed_t y) noexcept {
+            auto& self = *static_cast<Pointer *>(data);
+            if (self._focus) {
+                self._focus->pointer_motion(
+                    static_cast<float>(wl_fixed_to_double(x)),
+                    static_cast<float>(wl_fixed_to_double(y))
+                );
+            }
+        },
+        .button = [](void *data, wl_pointer *, uint32_t, uint32_t, uint32_t button, uint32_t state) noexcept {
+            auto& self = *static_cast<Pointer *>(data);
+            if (self._focus) {
+                self._focus->pointer_click(button, static_cast<wl_pointer_button_state>(state));
+            }
+        },
+        .axis = [](void * data, wl_pointer *, uint32_t, uint32_t axis, wl_fixed_t value) noexcept {
+            auto& self = *static_cast<Pointer *>(data);
+            if (self._focus) {
+                const auto distance = static_cast<float>(wl_fixed_to_double(value));
+                switch (axis) {
+                case WL_POINTER_AXIS_VERTICAL_SCROLL:
+                    self._focus->scroll(MouseWheelAxis::Vertical, distance);
+                    break;
+                case WL_POINTER_AXIS_HORIZONTAL_SCROLL:
+                    self._focus->scroll(MouseWheelAxis::Horizontal, distance);
+                }
+            }
+        },
         .frame = [](void *, wl_pointer *) noexcept {},
         .axis_source = [](void *, wl_pointer *, uint32_t) noexcept {},
         .axis_stop = [](void *, wl_pointer *, uint32_t, uint32_t) noexcept {},
