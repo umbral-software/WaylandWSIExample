@@ -33,8 +33,12 @@ ThemeCursor::~ThemeCursor() {
 }
 
 void ThemeCursor::set_cursor_type(CursorType type) {
-    _cursor = wl_cursor_theme_get_cursor(_theme, cursor_type_to_name(type));
-    do_update();
+    const auto new_cursor = wl_cursor_theme_get_cursor(_theme, cursor_type_to_name(type));
+
+    if (new_cursor != _cursor) {
+        _cursor = new_cursor;
+        do_update();
+    }
 }
 
 void ThemeCursor::enter(uint32_t serial) {

@@ -26,8 +26,12 @@ ShapeCursor::ShapeCursor(wp_cursor_shape_device_v1 *cursor_shape_device)
 {}
 
 void ShapeCursor::set_cursor_type(CursorType type) {
-    _shape = cursor_type_to_shape(type);
-    do_update();
+    const auto new_shape = cursor_type_to_shape(type);
+
+    if (new_shape != _shape) {
+        _shape = new_shape;
+        do_update();
+    }
 }
 
 void ShapeCursor::enter(uint32_t serial) {
