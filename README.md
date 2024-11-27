@@ -66,7 +66,7 @@ Currently the code is tested on KWin, Mutter, Weston and Sway. Reports (both suc
 
 * Karen Webb
   * Discord: KarenTheDorf(hildarthedorf)
-  * Email: [gareth.webb@umbralsoftware.co.uk](mailto:gareth.webb@umbralsoftware.co.uk)
+  * Email: [karen.webb@umbralsoftware.co.uk](mailto:karen.webb@umbralsoftware.co.uk)
   * IRC: karenw on [Libera](https://libera.chat/) and [OFTC](https://www.oftc.net/)
 
 ## Version History
