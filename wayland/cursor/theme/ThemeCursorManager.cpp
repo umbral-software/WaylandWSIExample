@@ -1,7 +1,7 @@
 #include "ThemeCursorManager.hpp"
 #include "ThemeCursor.hpp"
 
-static constexpr int DEFAULT_CURSOR_SIZE = 16;
+static constexpr int DEFAULT_CURSOR_SIZE = 24;
 
 static int get_cursor_size() {
     const auto xcursor_size_str = getenv("XCURSOR_SIZE");
