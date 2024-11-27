@@ -40,7 +40,19 @@ Pointer::Pointer(Seat& seat)
                 self._focus->pointer_click(button, static_cast<wl_pointer_button_state>(state));
             }
         },
-        .axis = [](void *, wl_pointer *, uint32_t, uint32_t, wl_fixed_t) noexcept {},
+        .axis = [](void * data, wl_pointer *, uint32_t, uint32_t axis, wl_fixed_t value) noexcept {
+            auto& self = *static_cast<Pointer *>(data);
+            if (self._focus) {
+                const auto distance = static_cast<float>(wl_fixed_to_double(value));
+                switch (axis) {
+                case WL_POINTER_AXIS_VERTICAL_SCROLL:
+                    self._focus->scroll(MouseWheelAxis::Vertical, distance);
+                    break;
+                case WL_POINTER_AXIS_HORIZONTAL_SCROLL:
+                    self._focus->scroll(MouseWheelAxis::Horizontal, distance);
+                }
+            }
+        },
         .frame = [](void *, wl_pointer *) noexcept {},
         .axis_source = [](void *, wl_pointer *, uint32_t) noexcept {},
         .axis_stop = [](void *, wl_pointer *, uint32_t, uint32_t) noexcept {},

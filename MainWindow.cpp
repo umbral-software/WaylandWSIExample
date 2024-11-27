@@ -389,6 +389,19 @@ void MainWindow::reconfigure() noexcept {
     _renderer.resize(buffer_size());
 }
 
+void MainWindow::scroll(MouseWheelAxis axis, float distance) noexcept {
+    switch (axis) {
+    case MouseWheelAxis::Vertical:
+        ImGui::GetIO().AddMouseWheelEvent(0, -distance);
+        break;
+    case MouseWheelAxis::Horizontal:
+        ImGui::GetIO().AddMouseWheelEvent(-distance, 0);
+        break;
+    default:
+        break;
+    }
+}
+
 void MainWindow::text(const std::string& str) const noexcept {
     ImGui::GetIO().AddInputCharactersUTF8(str.c_str());
 }

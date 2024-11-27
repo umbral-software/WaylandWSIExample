@@ -1,5 +1,6 @@
 #pragma once
 
+#include "MouseWheelAxis.hpp"
 #include "WaylandPointer.hpp"
 #include "cursor/CursorBase.hpp"
 
@@ -25,6 +26,7 @@ public:
     virtual void pointer_click(uint32_t button, wl_pointer_button_state state) noexcept = 0;
     virtual void pointer_motion(float x, float y) noexcept = 0;
     virtual void reconfigure() noexcept = 0;
+    virtual void scroll(MouseWheelAxis axis, float distance) noexcept = 0;
     virtual void text(const std::string& str) const noexcept = 0;
 
     void register_cursor(CursorBase *cursor);
