@@ -168,9 +168,7 @@ Touch::Touch(Seat& seat)
         .cancel = [](void *data, struct wl_touch *) {
             auto& self = *static_cast<Touch *>(data);
 
-            for (auto& [id, touchpoint] : self._touchpoints) {
-                touchpoint._events.clear();
-            }
+            self._touchpoints.clear();
         },
         .shape = [](void *data, struct wl_touch *, int32_t id, wl_fixed_t major, wl_fixed_t minor) {
             auto& self = *static_cast<Touch *>(data);
