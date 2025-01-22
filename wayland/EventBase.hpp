@@ -2,9 +2,9 @@
 
 #include <string>
 
-class TouchEvent {
+class EventBase {
 public:
-    virtual ~TouchEvent() = default;
+    virtual ~EventBase() = default;
 
     virtual std::string to_string() const  = 0;
 };

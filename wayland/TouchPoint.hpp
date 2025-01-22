@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TouchEvent.hpp"
+#include "EventBase.hpp"
 
 #include <memory>
 #include <vector>
@@ -24,5 +24,5 @@ private:
 private:
     int _id;
     Window * _focus;
-    std::vector<std::unique_ptr<TouchEvent>> _events;
+    std::vector<std::unique_ptr<EventBase>> _events;
 };

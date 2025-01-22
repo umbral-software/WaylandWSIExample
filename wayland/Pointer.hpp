@@ -1,9 +1,12 @@
 #pragma once
 
-#include "cursor/CursorBase.hpp"
 #include "WaylandPointer.hpp"
 
+#include <vector>
+
+class CursorBase;
 class Display;
+class EventBase;
 class Seat;
 class Window;
 
@@ -23,4 +26,5 @@ private:
 
     WaylandPointer<wl_pointer> _pointer;
     std::unique_ptr<CursorBase> _cursor;
+    std::vector<std::unique_ptr<EventBase>> _events;
 };

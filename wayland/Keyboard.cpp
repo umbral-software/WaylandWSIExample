@@ -60,7 +60,7 @@ Keyboard::Keyboard(Seat& seat)
                     const auto alt = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE);
 
                     for (auto i = 0; i < num_syms; ++i) {
-                        self._focus->keysym(syms[i], shift, ctrl, alt);
+                        self._focus->keysym_event(syms[i], shift, ctrl, alt);
                     }
 
                     const size_t chars = static_cast<size_t>(1 + xkb_state_key_get_utf8(self._state.get(), xkb_key, nullptr, 0));
@@ -68,7 +68,7 @@ Keyboard::Keyboard(Seat& seat)
                         const auto buf = std::make_unique_for_overwrite<char[]>(chars);
                         xkb_state_key_get_utf8(self._state.get(), xkb_key, buf.get(), chars);
 
-                        self._focus->text(std::string_view(buf.get(), chars));
+                        self._focus->text_event(std::string_view(buf.get(), chars));
                     }
                     break;
                 }
