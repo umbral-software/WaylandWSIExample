@@ -1,13 +1,13 @@
 #include "Touch.hpp"
 
 #include "Display.hpp"
-#include "Window.hpp"
 #include "Seat.hpp"
-#include "wayland/TouchEvent.hpp"
-#include "wayland/TouchPoint.hpp"
+#include "Window.hpp"
+#include "TouchPoint.hpp"
+
 #include <sstream>
 
-class DownTouchEvent final : public TouchEvent {
+class DownTouchEvent final : public EventBase {
 public:
     DownTouchEvent(uint32_t serial, uint32_t time, int x, int y)
         :_serial(serial)
@@ -33,7 +33,7 @@ private:
     std::pair<int, int> _pos;
 };
 
-class MotionTouchEvent final : public TouchEvent {
+class MotionTouchEvent final : public EventBase {
 public:
     MotionTouchEvent(uint32_t time, int x, int y)
         :_pos(x, y)
@@ -56,7 +56,7 @@ private:
     std::pair<int, int> _pos;
 };
 
-class OrientationTouchEvent final : public TouchEvent {
+class OrientationTouchEvent final : public EventBase {
 public:
     OrientationTouchEvent(int angle)
         :_angle(angle)
@@ -71,7 +71,7 @@ public:
 
     std::string to_string() const final {
         std::stringstream ss;
-        ss << "Orientation (angle: " << _angle << "degrees))"; 
+        ss << "Orientation (angle: " << _angle << "degrees)"; 
         return ss.str();
     }
 
@@ -79,7 +79,7 @@ private:
     int _angle;
 };
 
-class ShapeTouchEvent final : public TouchEvent {
+class ShapeTouchEvent final : public EventBase {
 public:
     ShapeTouchEvent(int major, int minor)
         :_size(major, minor)
@@ -102,7 +102,7 @@ private:
     std::pair<int, int> _size;
 };
 
-class UpTouchEvent final : public TouchEvent {
+class UpTouchEvent final : public EventBase {
 public:
     UpTouchEvent(uint32_t serial, uint32_t time)
         :_serial(serial)
@@ -117,7 +117,7 @@ public:
 
     std::string to_string() const final {
         std::stringstream ss;
-        ss << "Up (serial: " << _serial << ", time: " << _time << "))"; 
+        ss << "Up (serial: " << _serial << ", time: " << _time << ")"; 
         return ss.str();
     }
 
