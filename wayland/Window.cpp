@@ -182,6 +182,14 @@ void Window::text(std::string_view str) const noexcept {
     fwrite(str.data(), 1, str.size(), stdout);
 }
 
+void Window::touch_events(int id, const std::vector<std::unique_ptr<TouchEvent>>& events) const noexcept {
+    printf("Touchpoint %d\n", id);
+    for (const auto& event : events) {
+        printf("\t%s\n", event->to_string().c_str());
+    }
+    puts("Frame");
+}
+
 wl_display *Window::display() noexcept {
     return _display._display.get();
 }

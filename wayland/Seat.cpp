@@ -22,6 +22,14 @@ Seat::Seat(Display& display, wl_seat *seat)
             } else {
                 self._pointer.reset();
             }
+
+            if (WL_SEAT_CAPABILITY_TOUCH & capabilities) {
+                if (!self._touch) {
+                    self._touch.emplace(self);
+                }
+            } else {
+                self._touch.reset();
+            }
         },
         .name = [](void *, wl_seat *, const char *) noexcept {
 

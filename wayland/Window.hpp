@@ -1,6 +1,9 @@
 #pragma once
 
+#include "TouchEvent.hpp"
 #include "WaylandPointer.hpp"
+
+#include <vector>
 
 class Display;
 
@@ -16,6 +19,7 @@ public:
 
     void keysym(uint32_t keysym, bool shift, bool ctrl, bool alt) noexcept;
     void text(std::string_view str) const noexcept;
+    void touch_events(int id, const std::vector<std::unique_ptr<TouchEvent>>& events) const noexcept;
 
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
     uint32_t buffer_scale() const noexcept;
