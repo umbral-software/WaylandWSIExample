@@ -56,6 +56,10 @@ struct WaylandDeleter {
         wl_surface_destroy(wl_surface);
     }
 
+    void operator()(wl_touch *wl_touch) const noexcept {
+        wl_touch_destroy(wl_touch);
+    }
+
     void operator()(wp_content_type_manager_v1 *wp_content_type_manager_v1) const noexcept {
         wp_content_type_manager_v1_destroy(wp_content_type_manager_v1);
     }

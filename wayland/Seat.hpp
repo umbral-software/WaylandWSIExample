@@ -2,6 +2,7 @@
 
 #include "Keyboard.hpp"
 #include "Pointer.hpp"
+#include "Touch.hpp"
 
 #include <optional>
 
@@ -10,6 +11,7 @@ class Display;
 class Seat {
     friend class Keyboard;
     friend class Pointer;
+    friend class Touch;
 public:
     Seat(Display& display, wl_seat *seat);
     Seat(const Seat&) = delete;
@@ -23,6 +25,7 @@ private:
     Display& _display;
     WaylandPointer<wl_seat> _seat;
 
-    std::optional<Keyboard> _keyboard;
+    std::optional<Touch> _touch;
     std::optional<Pointer> _pointer;
+    std::optional<Keyboard> _keyboard;
 };
