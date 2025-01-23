@@ -8,7 +8,7 @@ An example Wayland backend for Vulkan projects.
 
 A number of developers have experienced issues writing a custom Wayland backend for their Vulkan projects. Between poor documentation (e.g wl_frobble_bar: Frobbles a Bar) and poor examples (e.g. still using wl_shell).
 
-This project aims to be a minimal but complete wayland client for use with vulkan, and easily extensible to other APIs such as OpenGL. It uses the core protocol and xdg shell to handle window setup and management, keyboard and mouse input and basic cursor handling.
+This project aims to be a minimal but complete wayland client for use with vulkan, and easily extensible to other APIs such as OpenGL. It uses the core protocol and xdg shell to handle window setup and management, keyboard, mouse and touch input and basic cursor handling.
 Where supported, it also will suppport server-side decorations (failing back to fullscreen-only on compositors that do not provide the protocol), setting a content type hint for the compositor, and using the modern cursor shape protocol.
 
 Full list of protocols supported:
