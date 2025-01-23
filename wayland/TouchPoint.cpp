@@ -12,9 +12,11 @@ void TouchPoint::clear_events() {
 }
 
 void TouchPoint::send_events() {
-    if (_focus) {
-        _focus->touch_events(_id, _events);
-    }
+    if (!_events.empty()) {
+        if (_focus) {
+            _focus->touch_events(_id, _events);
+        }
 
-    clear_events();
+        clear_events();
+    }
 }
