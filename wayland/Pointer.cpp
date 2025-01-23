@@ -153,11 +153,11 @@ Pointer::Pointer(Seat& seat)
 
             self._events.emplace_back(std::make_unique<LeavePointerEvent>(serial));
 
-            if (self._focus) {
+            if (self._focus && !self._events.empty()) {
                 self._focus->pointer_events(self._events);
-                self._events.clear();
             }
 
+            self._events.clear();
             self._cursor->unset_pointer(serial);
             self._focus = nullptr;
         },
