@@ -21,7 +21,7 @@ public:
     void present(VkQueue queue);
 
     bool rebuild_required() const noexcept;
-    void rebuild(const std::pair<uint32_t, uint32_t>& size, VkRenderPass render_pass);
+    void rebuild(const VkExtent2D& size, VkRenderPass render_pass);
 
     VkExtent2D size() const noexcept;
 

@@ -136,7 +136,7 @@ void Swapchain::present(VkQueue queue) {
     }
 }
 
-void Swapchain::rebuild(const std::pair<uint32_t, uint32_t>& window_size, VkRenderPass render_pass) {
+void Swapchain::rebuild(const VkExtent2D& window_size, VkRenderPass render_pass) {
     const VkSurfacePresentModeEXT present_mode {
         .sType = VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT,
         .presentMode = VK_PRESENT_MODE_FIFO_KHR // Always supported
@@ -166,8 +166,8 @@ void Swapchain::rebuild(const std::pair<uint32_t, uint32_t>& window_size, VkRend
     }
 
     _size = {
-        std::clamp(window_size.first, surface_caps2.surfaceCapabilities.minImageExtent.width, surface_caps2.surfaceCapabilities.maxImageExtent.width),
-        std::clamp(window_size.second, surface_caps2.surfaceCapabilities.minImageExtent.height, surface_caps2.surfaceCapabilities.maxImageExtent.height),
+        std::clamp(window_size.width, surface_caps2.surfaceCapabilities.minImageExtent.width, surface_caps2.surfaceCapabilities.maxImageExtent.width),
+        std::clamp(window_size.height, surface_caps2.surfaceCapabilities.minImageExtent.height, surface_caps2.surfaceCapabilities.maxImageExtent.height),
     };
 
     destroy();

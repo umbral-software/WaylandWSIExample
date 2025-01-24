@@ -6,6 +6,7 @@
 #include <glm/gtc/reciprocal.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
+#include <imgui.h>
 #include <volk.h>
 
 #include <cstring>
@@ -23,7 +24,6 @@ struct PhysicalDeviceInformation {
     bool graphics_queue_supports_presentation;
     bool has_memory_priority;
     bool has_pageable_device_local_memory;
-    bool has_maintenance_5;
     bool has_synchronization_2;
 };
 
@@ -32,12 +32,19 @@ struct MatrixUniforms {
     glm::mat4 projection;
 };
 
-struct Vertex {
-    std::array<float, 3> position;
-    std::array<uint8_t, 4> color;
+struct PushConstants {
+    glm::vec2 scale;
+    glm::vec2 translate;
 };
 
-static const std::array REQUIRED_INSTANCE_EXTENSIONS {
+struct WorldVertex {
+    glm::vec3 position;
+    glm::u8vec4 color;
+};
+
+static constexpr VkDeviceSize DEFAULT_DYNAMIC_BUFFER_SIZE = 1 << 20;
+
+static constexpr std::array REQUIRED_INSTANCE_EXTENSIONS {
     VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
     VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
     VK_KHR_SURFACE_EXTENSION_NAME,
@@ -50,31 +57,11 @@ static constexpr float NEAR_CLIP_PLANE = 0.01f;
 static constexpr std::array<uint16_t, 3> INDICES {{
     0, 1, 2
 }};
-static constexpr std::array<Vertex, 3> VERTICES {{
+static constexpr std::array<WorldVertex, 3> VERTICES {{
     {{0.0f,  0.0f, 0.0f}, { 255,   0,   0, 255 }},
     {{2.0f,  0.0f, 0.0f}, {   0, 255,   0, 255 }},
     {{1.0f,  1.5f, 0.0f}, {   0,   0, 255, 255 }},
 }};
-
-static std::partial_ordering operator<=>(const VkExtent2D& extent, const std::pair<uint32_t, uint32_t>& pair) noexcept {
-    const std::weak_ordering width_comparison = extent.width <=> pair.first;
-    const std::weak_ordering height_comparison = extent.height <=> pair.second;
-
-    if (width_comparison == height_comparison) {
-        return width_comparison;
-    }
-    if (width_comparison == std::weak_ordering::equivalent) {
-        return height_comparison;
-    }
-    if (height_comparison == std::weak_ordering::equivalent) {
-        return width_comparison;
-    }
-    return std::partial_ordering::unordered;
-}
-
-static bool operator==(const VkExtent2D& extent, const std::pair<uint32_t, uint32_t>& pair) noexcept {
-    return std::partial_ordering::equivalent == (extent <=> pair);
-}
 
 static glm::mat4 infinitePerspectiveFovReverse(float fovx, float aspect, float zNear) {
     const float w = glm::cot(0.5f * fovx);
@@ -147,7 +134,6 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
 
         bool has_ext_memory_priority = false;
         bool has_ext_pageable_device_local_memory = false;
-        bool has_khr_maintenance_5 = false;
         bool has_khr_swapchain = false;
         for (uint32_t j = 0; j < num_device_extensions; ++j) {
             const auto extension_name = device_extension_properties[j].extensionName;
@@ -155,8 +141,6 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
                 has_ext_memory_priority = true;
             } else if (!strcmp(extension_name, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME)) {
                 has_ext_pageable_device_local_memory = true;
-            } else if (!strcmp(extension_name, VK_KHR_MAINTENANCE_5_EXTENSION_NAME)) {
-                has_khr_maintenance_5 = true;
             } else if (!strcmp(extension_name, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
                 has_khr_swapchain = true;
             }
@@ -184,13 +168,6 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
             pagable_device_local_memory_features.pNext = std::exchange(optional_pnext_chain, &pagable_device_local_memory_features);
         }
 
-        VkPhysicalDeviceMaintenance5FeaturesKHR maintenance_5_features = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR,
-        };
-        if (has_khr_maintenance_5) {
-            maintenance_5_features.pNext = std::exchange(optional_pnext_chain, &maintenance_5_features);
-        }
-
         VkPhysicalDeviceVulkan13Features vulkan_1_3_features {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = optional_pnext_chain  
@@ -203,7 +180,6 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
 
         device_info.has_memory_priority = memory_priority_features.memoryPriority;
         device_info.has_pageable_device_local_memory = pagable_device_local_memory_features.pageableDeviceLocalMemory;
-        device_info.has_maintenance_5 = maintenance_5_features.maintenance5;
         device_info.has_synchronization_2 = vulkan_1_3_features.synchronization2;
     }
 
@@ -217,15 +193,15 @@ static PhysicalDeviceInformation select_physical_device(
         bool is_valid = true;
 
         if (device_info.vulkan_version < VK_API_VERSION_1_3) {
-            is_valid = false;
-        }
-        if (!device_info.has_maintenance_5) {
+            puts("VK_API_VERSION");
             is_valid = false;
         }
         if (!device_info.has_synchronization_2) {
+            puts("syncronization_2");
             is_valid = false;
         }
         if (!device_info.graphics_queue_supports_presentation) {
+            puts("present");
             is_valid = false;
         }
 
@@ -289,7 +265,6 @@ Renderer::Renderer(Window& window)
     _queue_family_index = physical_device_info.graphics_queue;
 
     std::vector device_extensions{
-        VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
     void *optional_pnext_chain = nullptr;
@@ -310,14 +285,9 @@ Renderer::Renderer(Window& window)
         desired_memory_priority_features.memoryPriority = true;
         desired_memory_priority_features.pNext = std::exchange(optional_pnext_chain, &desired_memory_priority_features);
     }
-    const VkPhysicalDeviceMaintenance5FeaturesKHR desired_maintenance_5_features {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR,
-        .pNext = optional_pnext_chain,
-        .maintenance5 = true
-    };
     const VkPhysicalDeviceVulkan13Features desired_vulkan_1_3_features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .pNext = const_cast<VkPhysicalDeviceMaintenance5FeaturesKHR *>(&desired_maintenance_5_features),
+        .pNext = optional_pnext_chain,
         .synchronization2 = true
     };
     const float queue_priority = 1.0f;
@@ -338,7 +308,7 @@ Renderer::Renderer(Window& window)
     check_success(vkCreateDevice(_physical_device, &device_create_info, nullptr, &d.device));
     volkLoadDevice(d.device);
 
-    VmaAllocatorCreateFlags allocator_flags = VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
+    VmaAllocatorCreateFlags allocator_flags = 0;
     if (physical_device_info.has_memory_priority) {
         allocator_flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
     }
@@ -354,25 +324,52 @@ Renderer::Renderer(Window& window)
 
     vkGetDeviceQueue(d.device, _queue_family_index, 0, &_queue);
 
-    const VkDescriptorSetLayoutBinding descriptor_set_layout_binding {
+    const VkDescriptorSetLayoutBinding world_descriptor_set_layout_binding {
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
     };
-    const VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info {
+    const VkDescriptorSetLayoutCreateInfo world_descriptor_set_layout_create_info {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .bindingCount = 1,
-        .pBindings = &descriptor_set_layout_binding
+        .pBindings = &world_descriptor_set_layout_binding
     };
-    check_success(vkCreateDescriptorSetLayout(d.device, &descriptor_set_layout_create_info, nullptr, &d.descriptor_set_layout));
+    check_success(vkCreateDescriptorSetLayout(d.device, &world_descriptor_set_layout_create_info, nullptr, &d.world_descriptor_set_layout));
 
-    const VkPipelineLayoutCreateInfo pipeline_layout_create_info {
+    const VkPipelineLayoutCreateInfo world_pipeline_layout_create_info {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 1,
-        .pSetLayouts = &d.descriptor_set_layout
+        .pSetLayouts = &d.world_descriptor_set_layout
     };
-    check_success(vkCreatePipelineLayout(d.device, &pipeline_layout_create_info, nullptr, &d.pipeline_layout));
+    check_success(vkCreatePipelineLayout(d.device, &world_pipeline_layout_create_info, nullptr, &d.world_pipeline_layout));
+
+    const VkDescriptorSetLayoutBinding ui_descriptor_set_layout_binding {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+    const VkDescriptorSetLayoutCreateInfo ui_descriptor_set_layout_create_info {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 1,
+        .pBindings = &ui_descriptor_set_layout_binding
+    };
+    check_success(vkCreateDescriptorSetLayout(d.device, &ui_descriptor_set_layout_create_info, nullptr, &d.ui_descriptor_set_layout));
+
+    const VkPushConstantRange ui_push_constant_range {
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .offset = 0,
+        .size = sizeof(PushConstants)
+    };
+    const VkPipelineLayoutCreateInfo ui_pipeline_layout_create_info {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &d.ui_descriptor_set_layout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &ui_push_constant_range
+    };
+    check_success(vkCreatePipelineLayout(d.device, &ui_pipeline_layout_create_info, nullptr, &d.ui_pipeline_layout));
 
     const std::array attachment_descs {
         VkAttachmentDescription {
@@ -436,60 +433,122 @@ Renderer::Renderer(Window& window)
     };
     check_success(vkCreateRenderPass(d.device, &render_pass_create_info, nullptr, &d.render_pass));
 
-    const std::vector<uint32_t> vertex_code = load_shader("main.vert");
-    const VkShaderModuleCreateInfo vertex_shader_create_info {
+    const std::vector<uint32_t> world_vertex_code = load_shader("world.vert");
+    const VkShaderModuleCreateInfo world_vertex_shader_create_info {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = vertex_code.size() * sizeof(uint32_t),
-        .pCode = vertex_code.data()
+        .codeSize = world_vertex_code.size() * sizeof(uint32_t),
+        .pCode = world_vertex_code.data()
     };
-    const std::vector<uint32_t> fragment_code = load_shader("main.frag");
-    const VkShaderModuleCreateInfo fragment_shader_create_info {
+    const std::vector<uint32_t> world_fragment_code = load_shader("world.frag");
+    const VkShaderModuleCreateInfo world_fragment_shader_create_info {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = fragment_code.size() * sizeof(uint32_t),
-        .pCode = fragment_code.data()
+        .codeSize = world_fragment_code.size() * sizeof(uint32_t),
+        .pCode = world_fragment_code.data()
     };
-    const std::array pipeline_shader_stages {
+    const std::array world_pipeline_shader_stages {
         VkPipelineShaderStageCreateInfo {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pNext = &vertex_shader_create_info,
+            .pNext = &world_vertex_shader_create_info,
             .stage = VK_SHADER_STAGE_VERTEX_BIT,
             .pName = "main"
         },
         VkPipelineShaderStageCreateInfo {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pNext = &fragment_shader_create_info,
+            .pNext = &world_fragment_shader_create_info,
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
             .pName = "main"
         }
     };
-    const std::array vertex_binding_descs {
+    const std::array world_vertex_binding_descs {
         VkVertexInputBindingDescription { 
             .binding = 0,
-            .stride = sizeof(Vertex),
+            .stride = sizeof(WorldVertex),
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
         }
     };
-    const std::array vertex_attribute_descs {
+    const std::array world_vertex_attribute_descs {
         VkVertexInputAttributeDescription {
             .location = 0,
             .binding = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(Vertex, position)
+            .offset = offsetof(WorldVertex, position)
         },
         VkVertexInputAttributeDescription {
             .location = 1,
             .binding = 0,
             .format = VK_FORMAT_R8G8B8A8_UNORM,
-            .offset = offsetof(Vertex, color)
+            .offset = offsetof(WorldVertex, color)
         }
     };
-    const VkPipelineVertexInputStateCreateInfo pipeline_vertex_input_state {
+    const VkPipelineVertexInputStateCreateInfo world_pipeline_vertex_input_state {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = vertex_binding_descs.size(),
-        .pVertexBindingDescriptions = vertex_binding_descs.data(),
-        .vertexAttributeDescriptionCount = vertex_attribute_descs.size(),
-        .pVertexAttributeDescriptions = vertex_attribute_descs.data()
+        .vertexBindingDescriptionCount = world_vertex_binding_descs.size(),
+        .pVertexBindingDescriptions = world_vertex_binding_descs.data(),
+        .vertexAttributeDescriptionCount = world_vertex_attribute_descs.size(),
+        .pVertexAttributeDescriptions = world_vertex_attribute_descs.data()
     };
+
+    const std::vector<uint32_t> ui_vertex_code = load_shader("ui.vert");
+    const VkShaderModuleCreateInfo ui_vertex_shader_create_info {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = ui_vertex_code.size() * sizeof(uint32_t),
+        .pCode = ui_vertex_code.data()
+    };
+    const std::vector<uint32_t> ui_fragment_code = load_shader("ui.frag");
+    const VkShaderModuleCreateInfo ui_fragment_shader_create_info {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = ui_fragment_code.size() * sizeof(uint32_t),
+        .pCode = ui_fragment_code.data()
+    };
+    const std::array ui_pipeline_shader_stages {
+        VkPipelineShaderStageCreateInfo {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext = &ui_vertex_shader_create_info,
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .pName = "main"
+        },
+        VkPipelineShaderStageCreateInfo {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext = &ui_fragment_shader_create_info,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pName = "main"
+        }
+    };
+    const std::array ui_vertex_binding_descs {
+        VkVertexInputBindingDescription { 
+            .binding = 0,
+            .stride = sizeof(ImDrawVert),
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+        }
+    };
+    const std::array ui_vertex_attribute_descs {
+        VkVertexInputAttributeDescription {
+            .location = 0,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(ImDrawVert, pos)
+        },
+        VkVertexInputAttributeDescription {
+            .location = 1,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(ImDrawVert, uv)
+        },
+        VkVertexInputAttributeDescription {
+            .location = 2,
+            .binding = 0,
+            .format = VK_FORMAT_R8G8B8A8_UNORM,
+            .offset = offsetof(ImDrawVert, col)
+        }
+    };
+    const VkPipelineVertexInputStateCreateInfo ui_pipeline_vertex_input_state {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = ui_vertex_binding_descs.size(),
+        .pVertexBindingDescriptions = ui_vertex_binding_descs.data(),
+        .vertexAttributeDescriptionCount = ui_vertex_attribute_descs.size(),
+        .pVertexAttributeDescriptions = ui_vertex_attribute_descs.data()
+    };
+
     const VkPipelineInputAssemblyStateCreateInfo pipeline_input_assembly_state {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
@@ -499,23 +558,41 @@ Renderer::Renderer(Window& window)
         .viewportCount = 1,
         .scissorCount = 1
     };
-    const VkPipelineRasterizationStateCreateInfo pipeline_raster_state {
+    const VkPipelineRasterizationStateCreateInfo world_pipeline_raster_state {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .polygonMode = VK_POLYGON_MODE_FILL,
         .cullMode = VK_CULL_MODE_BACK_BIT,
+        .lineWidth = 1.0f  
+    };
+    const VkPipelineRasterizationStateCreateInfo ui_pipeline_raster_state {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .cullMode = VK_CULL_MODE_NONE,
         .lineWidth = 1.0f  
     };
     const VkPipelineMultisampleStateCreateInfo pipeline_multisample_state {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
     };
-    const VkPipelineDepthStencilStateCreateInfo pipeline_depth_stencil_state {
+    const VkPipelineDepthStencilStateCreateInfo world_pipeline_depth_stencil_state {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = true,
         .depthWriteEnable = true,
         .depthCompareOp = VK_COMPARE_OP_GREATER
     };
+    const VkPipelineDepthStencilStateCreateInfo ui_pipeline_depth_stencil_state {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable = false,
+        .depthWriteEnable = false,
+    };
     const VkPipelineColorBlendAttachmentState pipeline_color_blend_attachment_state {
+        .blendEnable = true,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .colorBlendOp = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .alphaBlendOp = VK_BLEND_OP_ADD,
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
     };
     const VkPipelineColorBlendStateCreateInfo pipeline_color_blend_state {
@@ -529,70 +606,163 @@ Renderer::Renderer(Window& window)
         .dynamicStateCount = pipeline_dynamic_states.size(),
         .pDynamicStates = pipeline_dynamic_states.data()
     };
-    const VkGraphicsPipelineCreateInfo pipeline_create_info {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .stageCount = pipeline_shader_stages.size(),
-        .pStages = pipeline_shader_stages.data(),
-        .pVertexInputState = &pipeline_vertex_input_state,
-        .pInputAssemblyState = &pipeline_input_assembly_state,
-        .pViewportState = &pipeline_viewport_state,
-        .pRasterizationState = &pipeline_raster_state,
-        .pMultisampleState = &pipeline_multisample_state,
-        .pDepthStencilState = &pipeline_depth_stencil_state,
-        .pColorBlendState = &pipeline_color_blend_state,
-        .pDynamicState = &pipeline_dynamic_state,
-        .layout = d.pipeline_layout,
-        .renderPass = d.render_pass
+    const std::array pipeline_create_info {
+        VkGraphicsPipelineCreateInfo {
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = world_pipeline_shader_stages.size(),
+            .pStages = world_pipeline_shader_stages.data(),
+            .pVertexInputState = &world_pipeline_vertex_input_state,
+            .pInputAssemblyState = &pipeline_input_assembly_state,
+            .pViewportState = &pipeline_viewport_state,
+            .pRasterizationState = &world_pipeline_raster_state,
+            .pMultisampleState = &pipeline_multisample_state,
+            .pDepthStencilState = &world_pipeline_depth_stencil_state,
+            .pColorBlendState = &pipeline_color_blend_state,
+            .pDynamicState = &pipeline_dynamic_state,
+            .layout = d.world_pipeline_layout,
+            .renderPass = d.render_pass,
+            .subpass = 0
+        },
+        VkGraphicsPipelineCreateInfo {
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = ui_pipeline_shader_stages.size(),
+            .pStages = ui_pipeline_shader_stages.data(),
+            .pVertexInputState = &ui_pipeline_vertex_input_state,
+            .pInputAssemblyState = &pipeline_input_assembly_state,
+            .pViewportState = &pipeline_viewport_state,
+            .pRasterizationState = &ui_pipeline_raster_state,
+            .pMultisampleState = &pipeline_multisample_state,
+            .pDepthStencilState = &ui_pipeline_depth_stencil_state,
+            .pColorBlendState = &pipeline_color_blend_state,
+            .pDynamicState = &pipeline_dynamic_state,
+            .layout = d.ui_pipeline_layout,
+            .renderPass = d.render_pass,
+            .subpass = 0,
+        }
     };
-    check_success(vkCreateGraphicsPipelines(d.device, nullptr, 1, &pipeline_create_info, nullptr, &d.pipeline)); // FIXME: PipelineCache
+    std::array<VkPipeline, 2> pipelines;
+    static_assert(pipeline_create_info.size() == pipelines.size());
+    check_success(vkCreateGraphicsPipelines(d.device, nullptr, pipeline_create_info.size(), pipeline_create_info.data(), nullptr, pipelines.data())); // FIXME: PipelineCache
+    d.world_pipeline = pipelines[0];
+    d.ui_pipeline = pipelines[1];
+
+    const VkSamplerCreateInfo bilinear_sampler_create_info {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = VK_FILTER_LINEAR,
+        .minFilter = VK_FILTER_LINEAR,
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .maxAnisotropy = 1.0f,
+        .minLod = 0,
+        .maxLod = VK_LOD_CLAMP_NONE
+    };
+    check_success(vkCreateSampler(d.device, &bilinear_sampler_create_info, nullptr, &d.bilinear_sampler));
 
     const std::array descriptor_pool_sizes {
+        VkDescriptorPoolSize { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
         VkDescriptorPoolSize { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1 }
     };
     const VkDescriptorPoolCreateInfo descriptor_pool_create_info {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = 1,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = 2,
         .poolSizeCount = descriptor_pool_sizes.size(),
         .pPoolSizes = descriptor_pool_sizes.data()
     };
     check_success(vkCreateDescriptorPool(d.device, &descriptor_pool_create_info, nullptr, &d.descriptor_pool));
+
+    const std::array descriptor_set_layouts { d.world_descriptor_set_layout, d.ui_descriptor_set_layout };
     const VkDescriptorSetAllocateInfo descriptor_set_allocate_info {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = d.descriptor_pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &d.descriptor_set_layout
+        .descriptorSetCount = descriptor_set_layouts.size(),
+        .pSetLayouts = descriptor_set_layouts.data()
     };
-    check_success(vkAllocateDescriptorSets(d.device, &descriptor_set_allocate_info, &d.descriptor_set));
+    std::array<VkDescriptorSet, 2> descriptor_sets;
+    static_assert(descriptor_sets.size() == descriptor_set_layouts.size());
+    check_success(vkAllocateDescriptorSets(d.device, &descriptor_set_allocate_info, descriptor_sets.data()));
+    d.world_descriptor_set = descriptor_sets[0];
+    d.ui_descriptor_set = descriptor_sets[1];
 
-    const VkBufferCreateInfo index_buffer_create_info {
+    const VkCommandPoolCreateInfo staging_command_pool_create_info {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        .queueFamilyIndex = _queue_family_index // FIXME: use a dedicated transfer queue.
+    };
+    check_success(vkCreateCommandPool(d.device, &staging_command_pool_create_info, nullptr, &d.staging_command_pool));
+
+    const VkCommandBufferAllocateInfo staging_command_buffer_allocate_info {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = d.staging_command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+    check_success(vkAllocateCommandBuffers(d.device, &staging_command_buffer_allocate_info, &_staging_command_buffer));
+
+    const VkCommandBufferBeginInfo command_buffer_begin_info {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+    check_success(vkBeginCommandBuffer(_staging_command_buffer, &command_buffer_begin_info));
+
+    const VkFenceCreateInfo unsignalled_fence_create_info {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+    };
+    check_success(vkCreateFence(d.device, &unsignalled_fence_create_info, nullptr, &d.staging_fence));
+
+    // Is this the right place for ImGui init?
+    ImGui::GetIO().BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+
+    uint8_t *pixels;
+    int font_width, font_height;
+    ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pixels, &font_width, &font_height);
+
+    const VkBufferCreateInfo staging_buffer_create_info {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = static_cast<VkDeviceSize>(font_height * font_width),
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+    };
+    const VmaAllocationCreateInfo staging_allocation_info {
+        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        .priority = STAGING_PRIORITY
+    };
+    check_success(vmaCreateBuffer(d.allocator, &staging_buffer_create_info, &staging_allocation_info, &d.staging_buffer, &d.staging_allocation, nullptr));
+
+    void *pData;
+    check_success(vmaMapMemory(d.allocator, d.staging_allocation, &pData));
+    memcpy(pData, pixels, static_cast<size_t>(font_width * font_height));
+    vmaUnmapMemory(d.allocator, d.staging_allocation);
+
+    const VkBufferCreateInfo world_index_buffer_create_info {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = sizeof(INDICES),
         .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT
     };
-    const VmaAllocationCreateInfo staging_allocation_info {
+    const VmaAllocationCreateInfo data_allocation_info {
         .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, // FIXME: Change to staging-instead bit
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .priority = HIGH_PRIORITY
     };
-    vmaCreateBuffer(d.allocator, &index_buffer_create_info, &staging_allocation_info, &d.index_buffer, &d.index_allocation, nullptr);
+    check_success(vmaCreateBuffer(d.allocator, &world_index_buffer_create_info, &data_allocation_info, &d.world_index_buffer, &d.world_index_allocation, nullptr));
 
-    void *pData;
-    vmaMapMemory(d.allocator, d.index_allocation, &pData);
+    check_success(vmaMapMemory(d.allocator, d.world_index_allocation, &pData));
     memcpy(pData, &INDICES, sizeof(INDICES));
-    vmaUnmapMemory(d.allocator, d.index_allocation);
+    vmaUnmapMemory(d.allocator, d.world_index_allocation);
 
-    const VkBufferCreateInfo vertex_buffer_create_info {
+    const VkBufferCreateInfo world_vertex_buffer_create_info {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = sizeof(VERTICES),
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
     };
-    vmaCreateBuffer(d.allocator, &vertex_buffer_create_info, &staging_allocation_info, &d.vertex_buffer, &d.vertex_allocation, nullptr);
+    check_success(vmaCreateBuffer(d.allocator, &world_vertex_buffer_create_info, &data_allocation_info, &d.world_vertex_buffer, &d.world_vertex_allocation, nullptr));
     
-    vmaMapMemory(d.allocator, d.vertex_allocation, &pData);
+    check_success(vmaMapMemory(d.allocator, d.world_vertex_allocation, &pData));
     memcpy(pData, &VERTICES, sizeof(VERTICES));
-    vmaUnmapMemory(d.allocator, d.vertex_allocation);
+    vmaUnmapMemory(d.allocator, d.world_vertex_allocation);
 
-    const VkBufferCreateInfo uniform_buffer_create_info {
+    const VkBufferCreateInfo world_uniform_buffer_create_info {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = NUM_FRAMES_IN_FLIGHT * sizeof(MatrixUniforms),
         .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
@@ -602,22 +772,107 @@ Renderer::Renderer(Window& window)
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .priority = NORMAL_PRIORITY
     };
-    vmaCreateBuffer(d.allocator, &uniform_buffer_create_info, &mappable_allocation_info, &d.uniform_buffer, &d.uniform_allocation, nullptr);
+    check_success(vmaCreateBuffer(d.allocator, &world_uniform_buffer_create_info, &mappable_allocation_info, &d.world_uniform_buffer, &d.world_uniform_allocation, nullptr));
 
-    const VkDescriptorBufferInfo descriptor_buffer_info {
-        .buffer = d.uniform_buffer,
+    const VkImageCreateInfo font_image_create_info {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = VK_FORMAT_R8_UNORM,
+        .extent = { static_cast<uint32_t>(font_width), static_cast<uint32_t>(font_height), 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+    };
+    const VmaAllocationCreateInfo device_allocation_info {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        .priority = NORMAL_PRIORITY
+    };
+    check_success(vmaCreateImage(d.allocator, &font_image_create_info, &device_allocation_info, &d.ui_font_image, &d.ui_font_allocation, nullptr));
+
+    const VkImageMemoryBarrier init_barrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .image = d.ui_font_image,
+        .subresourceRange = { 
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            0, VK_REMAINING_MIP_LEVELS,
+            0, VK_REMAINING_ARRAY_LAYERS
+        }
+    };
+    vkCmdPipelineBarrier(_staging_command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &init_barrier);
+
+    const VkBufferImageCopy buffer_image_copy {
+        .bufferRowLength = static_cast<uint32_t>(font_width),
+        .imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+        .imageExtent = { static_cast<uint32_t>(font_width), static_cast<uint32_t>(font_height), 1 }
+    };
+    vkCmdCopyBufferToImage(_staging_command_buffer, d.staging_buffer, d.ui_font_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &buffer_image_copy);
+
+    const VkImageMemoryBarrier fini_barrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .image = d.ui_font_image,
+        .subresourceRange = { 
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            0, VK_REMAINING_MIP_LEVELS,
+            0, VK_REMAINING_ARRAY_LAYERS
+        }
+    };
+    vkCmdPipelineBarrier(_staging_command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &fini_barrier);
+
+    const VkSubmitInfo submit_info {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &_staging_command_buffer
+    };
+    vkEndCommandBuffer(_staging_command_buffer);
+    vkQueueSubmit(_queue, 1, &submit_info, d.staging_fence);
+
+    const VkImageViewCreateInfo font_image_view_create_info {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = d.ui_font_image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = font_image_create_info.format,
+        .subresourceRange = { 
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            0, VK_REMAINING_MIP_LEVELS,
+            0, VK_REMAINING_ARRAY_LAYERS
+        }
+    };
+    check_success(vkCreateImageView(d.device, &font_image_view_create_info, nullptr, &d.ui_font_image_view));
+
+    const VkDescriptorBufferInfo world_descriptor_buffer_info {
+        .buffer = d.world_uniform_buffer,
         .offset = 0,
         .range = sizeof(MatrixUniforms)
     };
-    const VkWriteDescriptorSet descriptor_write {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = d.descriptor_set,
-        .dstBinding = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .pBufferInfo = &descriptor_buffer_info
+    const VkDescriptorImageInfo ui_descriptor_image_info {
+        .sampler = d.bilinear_sampler,
+        .imageView = d.ui_font_image_view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     };
-    vkUpdateDescriptorSets(d.device, 1, &descriptor_write, 0, nullptr);
+    const std::array descriptor_writes {
+        VkWriteDescriptorSet {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = d.world_descriptor_set,
+            .dstBinding = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            .pBufferInfo = &world_descriptor_buffer_info
+        },
+        VkWriteDescriptorSet {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = d.ui_descriptor_set,
+            .dstBinding = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo = &ui_descriptor_image_info
+        }
+    };
+    vkUpdateDescriptorSets(d.device, descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 
     for (auto& frame_data : d.frame_data) {
         const VkCommandPoolCreateInfo command_pool_create_info {
@@ -635,6 +890,20 @@ Renderer::Renderer(Window& window)
         };
         check_success(vkAllocateCommandBuffers(d.device, &command_buffer_allocate_info, &frame_data.command_buffer));
 
+        const VkBufferCreateInfo ui_index_buffer_create_info {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = DEFAULT_DYNAMIC_BUFFER_SIZE,
+            .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+        };
+        check_success(vmaCreateBuffer(d.allocator, &ui_index_buffer_create_info, &mappable_allocation_info, &frame_data.ui_index_buffer, &frame_data.ui_index_allocation, nullptr));
+
+        const VkBufferCreateInfo ui_vertex_buffer_create_info {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = DEFAULT_DYNAMIC_BUFFER_SIZE,
+            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+        };
+        check_success(vmaCreateBuffer(d.allocator, &ui_vertex_buffer_create_info, &mappable_allocation_info, &frame_data.ui_vertex_buffer, &frame_data.ui_vertex_allocation, nullptr));
+
         const VkFenceCreateInfo signalled_fence_create_info {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .flags = VK_FENCE_CREATE_SIGNALED_BIT
@@ -647,11 +916,13 @@ Renderer::Renderer(Window& window)
         check_success(vkCreateSemaphore(d.device, &semaphore_create_info, nullptr, &frame_data.semaphore));
     }
     _frame_index = d.frame_data.size();
+
+    check_success(vkWaitForFences(d.device, 1, &d.staging_fence, true, UINT64_MAX));
 }
 
 Renderer::~Renderer() {
     if (d.device) {
-        wait_all_fences();
+        vkQueueWaitIdle(_queue);
         _swapchain.destroy(true);
     }
 }
@@ -661,9 +932,9 @@ FrameData& Renderer::frame() noexcept {
 }
 
 void Renderer::render() {
-    if (_swapchain.rebuild_required() || _window.buffer_size() != _swapchain.size()) {
-        check_success(wait_all_fences()); // Can this be reduced?
-        _swapchain.rebuild(_window.buffer_size(), d.render_pass);
+    if (_swapchain.rebuild_required()) {
+        vkQueueWaitIdle(_queue);
+        _swapchain.rebuild(_swapchain.size(), d.render_pass);
     }
 
     _frame_index = (_frame_index + 1) % d.frame_data.size();
@@ -687,6 +958,11 @@ void Renderer::render() {
 
         _swapchain.present(_queue);
     }
+}
+
+void Renderer::resize(const std::pair<uint32_t, uint32_t>& size) {
+    vkQueueWaitIdle(_queue);;
+    _swapchain.rebuild({size.first, size.second}, d.render_pass);
 }
 
 void Renderer::record_command_buffer() {
@@ -728,22 +1004,77 @@ void Renderer::record_command_buffer() {
     };
 
     void *pData;
-    vmaMapMemory(d.allocator, d.uniform_allocation, &pData);
+    vmaMapMemory(d.allocator, d.world_uniform_allocation, &pData);
     memcpy(&reinterpret_cast<MatrixUniforms *>(pData)[_frame_index], &matrix_uniforms, sizeof(MatrixUniforms));
-    vmaUnmapMemory(d.allocator, d.uniform_allocation);
+    vmaUnmapMemory(d.allocator, d.world_uniform_allocation);
 
     check_success(vkResetCommandPool(d.device, frame().command_pool, 0));
     
     const auto cb = frame().command_buffer;
     check_success(vkBeginCommandBuffer(cb, &command_buffer_begin_info));
+
     vkCmdBeginRenderPass(cb, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, d.pipeline_layout, 0, 1, &d.descriptor_set, 1, &matrix_uniforms_offset);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, d.pipeline);
-    vkCmdBindIndexBuffer(cb, d.index_buffer, null_offset, VK_INDEX_TYPE_UINT16);
-    vkCmdBindVertexBuffers(cb, 0, 1, &d.vertex_buffer, &null_offset);
-    vkCmdSetScissor(cb, 0, 1, &scissor);
     vkCmdSetViewport(cb, 0, 1, &viewport);
+    
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, d.world_pipeline_layout, 0, 1, &d.world_descriptor_set, 1, &matrix_uniforms_offset);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, d.world_pipeline);
+    vkCmdBindIndexBuffer(cb, d.world_index_buffer, null_offset, VK_INDEX_TYPE_UINT16);
+    vkCmdBindVertexBuffers(cb, 0, 1, &d.world_vertex_buffer, &null_offset);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
     vkCmdDrawIndexed(cb, 3, 1, 0, 0, 0);
+
+    const auto& dd = ImGui::GetDrawData();
+    const PushConstants push_constants {
+        .scale = {
+            2.0f / dd->DisplaySize.x,
+            2.0f / dd->DisplaySize.y
+        },
+        .translate = {
+            -1.0f - dd->DisplayPos.x * push_constants.scale[0],
+            -1.0f - dd->DisplayPos.x * push_constants.scale[1],
+        }
+    };
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, d.ui_pipeline_layout, 0, 1, &d.ui_descriptor_set, 0, nullptr);
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, d.ui_pipeline);
+    vkCmdBindIndexBuffer(cb, frame().ui_index_buffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindVertexBuffers(cb, 0, 1, &frame().ui_vertex_buffer, &null_offset);
+    vkCmdPushConstants(cb, d.ui_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push_constants), &push_constants);
+
+    uint32_t current_index_offset = 0;
+    ImDrawIdx *index_data;
+    vmaMapMemory(d.allocator, frame().ui_index_allocation, reinterpret_cast<void **>(&index_data));
+
+    int32_t current_vertex_offset = 0;
+    ImDrawVert *vertex_data;
+    vmaMapMemory(d.allocator, frame().ui_vertex_allocation, reinterpret_cast<void **>(&vertex_data));
+    for (const auto cmd_list : dd->CmdLists) {
+        memcpy(&index_data[current_index_offset], cmd_list->IdxBuffer.Data, static_cast<size_t>(cmd_list->IdxBuffer.Size) * sizeof(ImDrawIdx));
+        memcpy(&vertex_data[current_vertex_offset], cmd_list->VtxBuffer.Data, static_cast<size_t>(cmd_list->VtxBuffer.Size) * sizeof(ImDrawVert));
+
+        for (const auto cmd : cmd_list->CmdBuffer) {
+            const ImVec2 clip_min = { (cmd.ClipRect.x - dd->DisplayPos.x) * dd->FramebufferScale.x, (cmd.ClipRect.y - dd->DisplayPos.y) * dd->FramebufferScale.y };
+            const ImVec2 clip_max = { (cmd.ClipRect.z - dd->DisplayPos.x) * dd->FramebufferScale.x, (cmd.ClipRect.w - dd->DisplayPos.y) * dd->FramebufferScale.y };
+
+            const VkRect2D scissor {
+                { 
+                    static_cast<int32_t>(clip_min.x),
+                    static_cast<int32_t>(clip_min.y)
+                },
+                { 
+                    static_cast<uint32_t>(clip_max.x - clip_min.x),
+                    static_cast<uint32_t>(clip_max.y - clip_min.y)
+                },
+            };
+            vkCmdSetScissor(cb, 0, 1, &scissor);
+            vkCmdDrawIndexed(cb, cmd.ElemCount, 1, current_index_offset + cmd.IdxOffset, current_vertex_offset + static_cast<int32_t>(cmd.VtxOffset), 0);
+        }
+
+        current_index_offset += static_cast<uint32_t>(cmd_list->IdxBuffer.Size);
+        current_vertex_offset += cmd_list->VtxBuffer.Size;
+    }
+    vmaUnmapMemory(d.allocator, frame().ui_index_allocation);
+    vmaUnmapMemory(d.allocator, frame().ui_vertex_allocation);
+
     vkCmdEndRenderPass(cb);
     check_success(vkEndCommandBuffer(cb));
 }
