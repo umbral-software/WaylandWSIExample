@@ -7,12 +7,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 #include <imgui.h>
+#include <memory>
 #include <volk.h>
 
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <utility>
+#include <vulkan/vulkan_core.h>
 
 using namespace std::literals;
 
@@ -52,6 +54,7 @@ static constexpr std::array REQUIRED_INSTANCE_EXTENSIONS {
     VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
 };
 
+static constexpr char PIPELINE_CACHE_FILENAME[] = "pipelinecache.bin";
 static constexpr float FIELD_OF_VIEW = glm::radians(90.0f);
 static constexpr float NEAR_CLIP_PLANE = 0.01f;
 
@@ -106,6 +109,32 @@ static std::vector<uint32_t> load_shader(std::filesystem::path path) {
     std::vector<uint32_t> ret(raw.size() / sizeof(uint32_t));
     memcpy(ret.data(), raw.data(), ret.size() * sizeof(uint32_t));
     return ret;
+}
+
+static VkPipelineCache load_pipeline_cache(VkDevice device, std::filesystem::path path) {
+    const auto raw = load_file(path);
+    std::vector<uint32_t> data(raw.size() / sizeof(uint32_t));
+    memcpy(data.data(), raw.data(), data.size() * sizeof(uint32_t));
+
+    const VkPipelineCacheCreateInfo createInfo {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+        .initialDataSize = data.size() * sizeof(uint32_t),
+        .pInitialData = data.data()
+    };
+
+    VkPipelineCache ret;
+    check_success(vkCreatePipelineCache(device, &createInfo, nullptr, &ret));
+    return ret;
+}
+
+static void save_pipeline_cache(VkDevice device, VkPipelineCache pipelineCache, std::filesystem::path path) {
+    size_t size;
+    check_success(vkGetPipelineCacheData(device, pipelineCache, &size, nullptr));
+    const auto p_data = std::make_unique_for_overwrite<char[]>(size);
+    check_success(vkGetPipelineCacheData(device, pipelineCache, &size, p_data.get()));
+
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    file.write(p_data.get(), size);
 }
 
 static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstance instance, VkSurfaceKHR surface) {
@@ -340,6 +369,8 @@ Renderer::Renderer(Window& window)
     _swapchain.init(d.device, d.allocator, d.surface, _physical_device);
 
     vkGetDeviceQueue(d.device, _queue_family_index, 0, &_queue);
+
+    d.pipeline_cache = load_pipeline_cache(d.device, PIPELINE_CACHE_FILENAME);
 
     const VkDescriptorSetLayoutBinding world_descriptor_set_layout_binding {
         .binding = 0,
@@ -659,9 +690,11 @@ Renderer::Renderer(Window& window)
     };
     std::array<VkPipeline, 2> pipelines;
     static_assert(pipeline_create_info.size() == pipelines.size());
-    check_success(vkCreateGraphicsPipelines(d.device, nullptr, pipeline_create_info.size(), pipeline_create_info.data(), nullptr, pipelines.data())); // FIXME: PipelineCache
+    check_success(vkCreateGraphicsPipelines(d.device, d.pipeline_cache, pipeline_create_info.size(), pipeline_create_info.data(), nullptr, pipelines.data())); // FIXME: PipelineCache
     d.world_pipeline = pipelines[0];
     d.ui_pipeline = pipelines[1];
+
+    save_pipeline_cache(d.device, d.pipeline_cache, PIPELINE_CACHE_FILENAME);
 
     const VkSamplerCreateInfo bilinear_sampler_create_info {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,

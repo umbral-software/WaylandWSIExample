@@ -42,6 +42,8 @@ RendererBase::~RendererBase() {
         vkDestroyDescriptorSetLayout(d.device, d.ui_descriptor_set_layout, nullptr);
         vkDestroyDescriptorSetLayout(d.device, d.world_descriptor_set_layout, nullptr);
 
+        vkDestroyPipelineCache(d.device, d.pipeline_cache, nullptr);
+
         vmaDestroyAllocator(d.allocator);
         vkDestroyDevice(d.device, nullptr);
     }

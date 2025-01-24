@@ -34,6 +34,8 @@ protected:
         VkDevice device;
         VmaAllocator allocator;
 
+        VkPipelineCache pipeline_cache;
+
         VkDescriptorSetLayout ui_descriptor_set_layout, world_descriptor_set_layout;
         VkPipelineLayout world_pipeline_layout, ui_pipeline_layout;
         VkRenderPass render_pass;
