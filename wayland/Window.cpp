@@ -4,6 +4,7 @@
 
 #include <cstring>
 #include <utility>
+#include <wayland-client-protocol.h>
 
 static constexpr int32_t DEFAULT_HEIGHT = 600;
 static constexpr int32_t DEFAULT_WIDTH = 800;
@@ -61,7 +62,9 @@ Window::Window(Display& display)
                 wl_surface_set_buffer_scale(self._surface.get(), 1);
             } else if (self._actual_integer_scale) {
                 wl_surface_set_buffer_scale(self._surface.get(), self._actual_integer_scale);
-            } 
+            } else {
+                wl_surface_set_buffer_scale(self._surface.get(), 1);
+            }
         }
     };
 
