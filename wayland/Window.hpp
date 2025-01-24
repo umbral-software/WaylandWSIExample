@@ -51,9 +51,15 @@ private:
     WaylandPointer<wp_viewport> _viewport;
     WaylandPointer<zxdg_toplevel_decoration_v1> _toplevel_decoration;
 
-    bool _closed, _fullscreen, _has_server_decorations;
-    int32_t _actual_integer_scale, _desired_integer_scale;
-    uint32_t _actual_fractional_scale, _desired_fractional_scale;
+    bool _closed, _fullscreen, _maximized, _has_server_decorations;
+    int32_t _actual_integer_scale;
+    std::optional<int32_t> _desired_integer_scale;
+    uint32_t _actual_fractional_scale;
+    std::optional<uint32_t> _desired_fractional_scale;
 
-    std::pair<int32_t, int32_t> _actual_surface_size, _desired_surface_size;
+    std::pair<int32_t, int32_t> _actual_surface_bounds;
+    std::optional<std::pair<int32_t, int32_t>> _desired_surface_bounds;
+
+    std::pair<int32_t, int32_t> _actual_surface_size;
+    std::optional<std::pair<int32_t, int32_t>> _desired_surface_size;
 };

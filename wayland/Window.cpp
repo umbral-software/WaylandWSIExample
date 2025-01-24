@@ -34,20 +34,34 @@ Window::Window(Display& display)
 
             xdg_surface_ack_configure(surface, serial);
 
-            if (self._desired_surface_size.first && self._desired_surface_size.second) {
-                self._actual_surface_size = self._desired_surface_size;
+            if (self._desired_surface_bounds.has_value()) {
+                if (self._desired_surface_bounds.value() != std::make_pair(0, 0)) {
+                    self._actual_surface_bounds = self._desired_surface_bounds.value();
+                } else {
+                    self._actual_surface_bounds = { INT32_MAX, INT32_MAX };
+                }
             }
-            self._desired_surface_size = { 0, 0 };
+            self._desired_surface_bounds = std::nullopt;
 
-            if (self._desired_fractional_scale) {
-                self._actual_fractional_scale = self._desired_fractional_scale;
+            if (self._desired_surface_size.has_value() && self._desired_surface_size.value() != std::make_pair(0, 0)) {
+                self._actual_surface_size = self._desired_surface_size.value();
             }
-            self._desired_fractional_scale = 0;
+            self._desired_surface_size = std::nullopt;
 
-            if (self._desired_integer_scale) {
-                self._actual_integer_scale = self._desired_integer_scale;
+            if (!(self._fullscreen || self._maximized)) {
+                self._actual_surface_size.first = std::min(self._actual_surface_size.first, self._actual_surface_bounds.first);
+                self._actual_surface_size.second = std::min(self._actual_surface_size.second, self._actual_surface_bounds.second);
             }
-            self._desired_integer_scale = 0;
+
+            if (self._desired_fractional_scale.has_value()) {
+                self._actual_fractional_scale = self._desired_fractional_scale.value();
+            }
+            self._desired_fractional_scale = std::nullopt;
+
+            if (self._desired_integer_scale.has_value()) {
+                self._actual_integer_scale = self._desired_integer_scale.value();
+            }
+            self._desired_integer_scale = std::nullopt;
 
             if (self._actual_fractional_scale) {
                 wp_viewport_set_destination(self._viewport.get(),
@@ -61,18 +75,35 @@ Window::Window(Display& display)
     };
 
     static constexpr xdg_toplevel_listener toplevel_listener {
-        .configure = [](void *data, xdg_toplevel *, int32_t width, int32_t height, wl_array *) noexcept {
+        .configure = [](void *data, xdg_toplevel *, int32_t width, int32_t height, wl_array *states) noexcept {
             auto& self = *static_cast<Window*>(data);
 
             self._desired_surface_size = { width, height };
+            self._fullscreen = false;
+            self._maximized = false;
+
+            for (const auto *pstate = (int32_t *)states->data; states->size != 0 && (const char *)pstate < ((const char *) states->data + states->size); pstate++) {
+                switch (*pstate) {
+                case XDG_TOPLEVEL_STATE_MAXIMIZED:
+                    self._maximized = true;
+                    break;
+                case XDG_TOPLEVEL_STATE_FULLSCREEN:
+                    self._fullscreen = true;
+                    break;
+                default:
+                    break;
+                }
+            }
         },
         .close = [](void *data, xdg_toplevel *) noexcept {
             auto& self = *static_cast<Window*>(data);
 
             self._closed = true;
         },
-        .configure_bounds = [](void *, xdg_toplevel *, int32_t, int32_t) noexcept {
-            
+        .configure_bounds = [](void *data, xdg_toplevel *, int32_t width, int32_t height) noexcept {
+            auto& self = *static_cast<Window*>(data);
+                        
+            self._desired_surface_bounds = { width, height };
         },
         .wm_capabilities = [](void *, xdg_toplevel *, wl_array *) noexcept {
             
@@ -138,20 +169,19 @@ Window::Window(Display& display)
 
     _closed = false;
     _fullscreen = false;
+    _maximized = false;
     _has_server_decorations = !!_display._decoration_manager;
 
     _actual_integer_scale = 0;
-    _desired_integer_scale = 0;
 
     if (display._has_fractional_scale) {
         _actual_fractional_scale = DEFAULT_SCALE_DPI;
     } else {
         _actual_fractional_scale = 0;
     }
-    _desired_fractional_scale = 0;
 
+    _actual_surface_bounds = { INT32_MAX, INT32_MAX };
     _actual_surface_size = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
-    _desired_surface_size = {0, 0};
 
     if (!_has_server_decorations) {
         toggle_fullscreen();
@@ -224,9 +254,7 @@ wl_surface *Window::surface() noexcept {
 void Window::toggle_fullscreen() noexcept {
     if (!_fullscreen) {
         xdg_toplevel_set_fullscreen(_toplevel.get(), nullptr);
-        _fullscreen = true;
     } else if (_has_server_decorations) {
         xdg_toplevel_unset_fullscreen(_toplevel.get());
-        _fullscreen = false;
     }
 }
