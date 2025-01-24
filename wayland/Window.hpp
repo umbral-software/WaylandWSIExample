@@ -25,6 +25,7 @@ public:
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
     uint32_t buffer_scale() const noexcept;
     std::pair<uint32_t, uint32_t> buffer_size() const noexcept;
+    std::pair<uint32_t, uint32_t> surface_size() const noexcept;
 
     wl_display *display() noexcept;
 

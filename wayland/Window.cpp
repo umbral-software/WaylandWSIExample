@@ -3,9 +3,10 @@
 #include "Display.hpp"
 
 #include <cstring>
+#include <utility>
 
-static constexpr uint32_t DEFAULT_HEIGHT = 600;
-static constexpr uint32_t DEFAULT_WIDTH = 800;
+static constexpr int32_t DEFAULT_HEIGHT = 600;
+static constexpr int32_t DEFAULT_WIDTH = 800;
 static constexpr char WINDOW_TITLE[] = "Wayland Example";
 
 Window::Window(Display& display)
@@ -35,23 +36,14 @@ Window::Window(Display& display)
             xdg_surface_ack_configure(surface, serial);
 
             if (self._desired_surface_bounds.has_value()) {
-                if (self._desired_surface_bounds.value() != std::make_pair(0, 0)) {
-                    self._actual_surface_bounds = self._desired_surface_bounds.value();
-                } else {
-                    self._actual_surface_bounds = { INT32_MAX, INT32_MAX };
-                }
+                self._actual_surface_bounds = self._desired_surface_bounds.value();
             }
             self._desired_surface_bounds = std::nullopt;
 
-            if (self._desired_surface_size.has_value() && self._desired_surface_size.value() != std::make_pair(0, 0)) {
+            if (self._desired_surface_size.has_value()) {
                 self._actual_surface_size = self._desired_surface_size.value();
             }
             self._desired_surface_size = std::nullopt;
-
-            if (!(self._fullscreen || self._maximized)) {
-                self._actual_surface_size.first = std::min(self._actual_surface_size.first, self._actual_surface_bounds.first);
-                self._actual_surface_size.second = std::min(self._actual_surface_size.second, self._actual_surface_bounds.second);
-            }
 
             if (self._desired_fractional_scale.has_value()) {
                 self._actual_fractional_scale = self._desired_fractional_scale.value();
@@ -64,13 +56,12 @@ Window::Window(Display& display)
             self._desired_integer_scale = std::nullopt;
 
             if (self._actual_fractional_scale) {
-                wp_viewport_set_destination(self._viewport.get(),
-                    self._actual_surface_size.first,
-                    self._actual_surface_size.second);
+                const auto size = self.surface_size();
+                wp_viewport_set_destination(self._viewport.get(), size.first, size.second);
                 wl_surface_set_buffer_scale(self._surface.get(), 1);
             } else if (self._actual_integer_scale) {
                 wl_surface_set_buffer_scale(self._surface.get(), self._actual_integer_scale);
-            }
+            } 
         }
     };
 
@@ -237,10 +228,24 @@ uint32_t Window::buffer_scale() const noexcept {
 }
 
 std::pair<uint32_t, uint32_t> Window::buffer_size() const noexcept {
+    const auto scale = static_cast<double>(buffer_scale()) / static_cast<double>(DEFAULT_SCALE_DPI);
+    const auto size = surface_size();
+
     return {
-        static_cast<uint32_t>(_actual_surface_size.first) * buffer_scale() / DEFAULT_SCALE_DPI,
-        static_cast<uint32_t>(_actual_surface_size.second) * buffer_scale() / DEFAULT_SCALE_DPI
+        size.first * scale,
+        size.second * scale
     };
+}
+
+std::pair<uint32_t, uint32_t> Window::surface_size() const noexcept {
+    auto size = _actual_surface_size;
+    if (size == std::make_pair(0,0)) {
+        size = std::make_pair(
+            std::min(DEFAULT_WIDTH, _actual_surface_bounds.first),
+            std::min(DEFAULT_HEIGHT, _actual_surface_bounds.second)
+        );
+    }
+    return size;
 }
 
 bool Window::should_close() const noexcept {
