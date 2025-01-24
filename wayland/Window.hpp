@@ -2,6 +2,7 @@
 
 #include "WaylandPointer.hpp"
 
+#include <optional>
 #include <vector>
 
 class Display;
