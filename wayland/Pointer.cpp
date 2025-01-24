@@ -108,10 +108,9 @@ private:
 
 class AxisPointerEvent final : public EventBase {
 public:
-    AxisPointerEvent(uint32_t serial, uint32_t time, uint32_t button, bool horizontal)
-        :_serial(serial)
-        ,_time(time)
-        ,_button(button)
+    AxisPointerEvent(uint32_t time, int32_t value, bool horizontal)
+        :_time(time)
+        ,_value(value)
         ,_horizontal(horizontal)
     {}
     AxisPointerEvent(const AxisPointerEvent&) = default;
@@ -123,14 +122,13 @@ public:
 
     std::string to_string() const final {
         std::stringstream ss;
-        ss << "Axis (serial: " << _serial << ", time: " << _time << ", button: " << _button << ", horizontal: " << _horizontal << ")"; 
+        ss << "Axis (time: " << ", value: " << _value << ", horizontal: " << _horizontal << ")"; 
         return ss.str();
     }
 
 private:
-    uint32_t _serial;
     uint32_t _time;
-    uint32_t _button;
+    int32_t _value;
     bool _horizontal;
 };
 
@@ -185,10 +183,10 @@ Pointer::Pointer(Seat& seat)
 
             switch (axis) {
             case WL_POINTER_AXIS_VERTICAL_SCROLL:
-                self._events.emplace_back(std::make_unique<AxisPointerEvent>(time, axis, wl_fixed_to_int(value), false));
+                self._events.emplace_back(std::make_unique<AxisPointerEvent>(time, wl_fixed_to_int(value), false));
                 break;
             case WL_POINTER_AXIS_HORIZONTAL_SCROLL:
-                self._events.emplace_back(std::make_unique<AxisPointerEvent>(time, axis, wl_fixed_to_int(value), true));
+                self._events.emplace_back(std::make_unique<AxisPointerEvent>(time, wl_fixed_to_int(value), true));
                 break;
             default:
                 break;
