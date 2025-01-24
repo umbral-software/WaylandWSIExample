@@ -1,11 +1,8 @@
 #include "MainWindow.hpp"
-#include "wayland/events/KeyboardEvents.hpp"
-#include "wayland/events/PointerEvents.hpp"
 
 #include <imgui.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-/*
 static constexpr CursorType imgui_cursor_to_type(ImGuiMouseCursor cursor) {
     switch (cursor) {
     case ImGuiMouseCursor_Arrow:
@@ -26,7 +23,6 @@ static constexpr CursorType imgui_cursor_to_type(ImGuiMouseCursor cursor) {
         return CursorType::Default;
     }
 }
-*/
 
 static constexpr ImGuiKey xkb_to_imgui_key(xkb_keysym_t keysym) {
     switch (keysym) {
@@ -390,11 +386,9 @@ void MainWindow::pointer_events(const std::vector<std::unique_ptr<PointerEventBa
             const auto& axisEvent = static_cast<AxisPointerEvent&>(*p_event.get());
 
             if (axisEvent.is_vertical()) {
-                printf("v: %d\n", axisEvent.value());
                 ImGui::GetIO().AddMouseWheelEvent(0, -axisEvent.value());
             }
             if (axisEvent.is_horizontal()) {
-                printf("h: %d\n", axisEvent.value());
                 ImGui::GetIO().AddMouseWheelEvent(-axisEvent.value(), 0);
             }
         }
@@ -412,6 +406,8 @@ void MainWindow::render() {
     ImGui::NewFrame();
     ImGui::ShowDemoWindow();
     ImGui::Render();
+
+    set_cursor_type(imgui_cursor_to_type(ImGui::GetMouseCursor()));
 
     _renderer.render();
 }

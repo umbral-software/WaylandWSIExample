@@ -2,6 +2,8 @@
 
 #include "CursorBase.hpp"
 
+#include <wayland-client-protocol.h>
+
 #include <memory>
 
 class CursorManagerBase {

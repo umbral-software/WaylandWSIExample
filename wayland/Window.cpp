@@ -1,6 +1,7 @@
 #include "Window.hpp"
 
 #include "Display.hpp"
+#include "wayland/cursor/CursorType.hpp"
 
 #include <cstring>
 #include <utility>
@@ -217,6 +218,12 @@ std::pair<uint32_t, uint32_t> Window::surface_size() const noexcept {
     return size;
 }
 
+void Window::set_cursor_type(CursorType type) noexcept {
+    for (auto cursor : _cursors) {
+        cursor->set_cursor_type(type);
+    }
+}
+
 void Window::set_should_close() noexcept {
     _closed = true;
 }
@@ -236,3 +243,14 @@ void Window::toggle_fullscreen() noexcept {
         xdg_toplevel_unset_fullscreen(_toplevel.get());
     }
 }
+
+void Window::register_cursor(CursorBase *cursor) {
+    if (cursor) {
+        _cursors.emplace(cursor);
+    }
+}
+
+void Window::unregister_cursor(CursorBase *cursor) {
+    _cursors.erase(cursor);
+}
+

@@ -1,14 +1,49 @@
 #include "ShapeCursor.hpp"
 
+static wp_cursor_shape_device_v1_shape cursor_type_to_shape(CursorType type) {
+    switch (type) {
+    case CursorType::Default:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+    case CursorType::Text:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT;
+    case CursorType::NSResize:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NS_RESIZE;
+    case CursorType::EWResize:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE;
+    case CursorType::NESWResize:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NESW_RESIZE;
+    case CursorType::NWSEResize:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NWSE_RESIZE;
+    case CursorType::NotAllowed:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NOT_ALLOWED;
+    default:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+    }
+}
+
 ShapeCursor::ShapeCursor(wp_cursor_shape_device_v1 *cursor_shape_device)
     :_device(cursor_shape_device)
 {}
 
-void ShapeCursor::set_pointer(uint32_t serial) {
-    wp_cursor_shape_device_v1_set_shape(_device.get(), serial, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+void ShapeCursor::set_cursor_type(CursorType type) {
+    const auto new_shape = cursor_type_to_shape(type);
+
+    if (new_shape != _shape) {
+        _shape = new_shape;
+        do_update();
+    }
 }
 
+void ShapeCursor::enter(uint32_t serial) {
+    _serial = serial;
+    _shape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+    do_update();
+}
 
-void ShapeCursor::unset_pointer(uint32_t) {
+void ShapeCursor::leave() {
 
+}
+
+void ShapeCursor::do_update() {
+    wp_cursor_shape_device_v1_set_shape(_device.get(), _serial, _shape);
 }

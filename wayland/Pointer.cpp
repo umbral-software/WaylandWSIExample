@@ -16,7 +16,8 @@ Pointer::Pointer(Seat& seat)
 
             if (surface) {
                 self._focus = static_cast<Window *>(wl_surface_get_user_data(surface));
-                self._cursor->set_pointer(serial);
+                self._cursor->enter(serial);
+                self._focus->register_cursor(self._cursor.get());
                 self._events.emplace_back(std::make_unique<EnterPointerEvent>(serial, wl_fixed_to_int(x), wl_fixed_to_int(y)));
             }
         },
@@ -30,7 +31,8 @@ Pointer::Pointer(Seat& seat)
             }
 
             self._events.clear();
-            self._cursor->unset_pointer(serial);
+            self._focus->unregister_cursor(self._cursor.get());
+            self._cursor->leave();
             self._focus = nullptr;
         },
         .motion  = [](void *data, wl_pointer *, uint32_t serial, wl_fixed_t x, wl_fixed_t y) noexcept {

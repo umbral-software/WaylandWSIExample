@@ -1,38 +1,53 @@
 #include "ThemeCursor.hpp"
 
-ThemeCursor::ThemeCursor(wl_cursor *cursor, wl_pointer *pointer, wl_surface *surface)
-    :_cursor(cursor)
+static const char *cursor_type_to_name(CursorType type) {
+    switch (type) {
+    case CursorType::Default:
+        return "default";
+    case CursorType::Text:
+        return "text";
+    case CursorType::NSResize:
+        return "ns-resize";
+    case CursorType::EWResize:
+        return "ew-resize";
+    case CursorType::NESWResize:
+        return "nesw-resize";
+    case CursorType::NWSEResize:
+        return "nwse-resize";
+    case CursorType::NotAllowed:
+        return "not-allowed";
+    default:
+        return "default";
+    }
+}
+
+ThemeCursor::ThemeCursor(wl_cursor_theme *theme, wl_pointer *pointer, wl_surface *surface)
+    :_theme(theme)
     ,_pointer(pointer)
     ,_surface(surface)
+    ,_cursor(wl_cursor_theme_get_cursor(_theme, cursor_type_to_name(CursorType::Default)))
 {}
 
 ThemeCursor::~ThemeCursor() {
-    if (_thread.joinable()) {
-        _thread_status.test_and_set(std::memory_order_relaxed);
-        _thread.join();
+    stop_thread();
+}
+
+void ThemeCursor::set_cursor_type(CursorType type) {
+    const auto new_cursor = wl_cursor_theme_get_cursor(_theme, cursor_type_to_name(type));
+
+    if (new_cursor != _cursor) {
+        _cursor = new_cursor;
+        do_update();
     }
 }
 
-void ThemeCursor::set_pointer(uint32_t serial) {
-    auto *image = _cursor->images[0];
-    attach_buffer(nullptr, image);
-    wl_pointer_set_cursor(
-        _pointer, serial, _surface.get(),
-        static_cast<int32_t>(image->hotspot_x),
-        static_cast<int32_t>(image->hotspot_y)
-    );
-
-    if (_cursor->image_count > 1) {
-        _thread_status.clear(std::memory_order_relaxed);
-        _thread = std::thread(&ThemeCursor::thread_entry, this);
-    }
+void ThemeCursor::enter(uint32_t serial) {
+    _serial = serial;
+    do_update();
 }
 
-void ThemeCursor::unset_pointer(uint32_t) {
-    if (_thread.joinable()) {
-        _thread_status.test_and_set(std::memory_order_relaxed);
-        _thread.join();
-    }
+void ThemeCursor::leave() {
+    stop_thread();
 }
 
 void ThemeCursor::attach_buffer(wl_cursor_image *old_image, wl_cursor_image *image) {
@@ -70,5 +85,33 @@ void ThemeCursor::thread_entry() noexcept {
         auto *image = _cursor->images[image_index];
 
         attach_buffer(old_image, image);
+    }
+}
+
+void ThemeCursor::do_update() {
+    stop_thread();
+
+    auto *image = _cursor->images[0];
+    attach_buffer(nullptr, image);
+    wl_pointer_set_cursor(
+        _pointer, _serial, _surface.get(),
+        static_cast<int32_t>(image->hotspot_x),
+        static_cast<int32_t>(image->hotspot_y)
+    );
+
+    if (_cursor->image_count > 1) {
+        start_thread();
+    }
+}
+
+void ThemeCursor::start_thread() {
+    _thread_status.clear(std::memory_order_relaxed);
+    _thread = std::thread(&ThemeCursor::thread_entry, this);
+}
+
+void ThemeCursor::stop_thread() {
+    if (_thread.joinable()) {
+        _thread_status.test_and_set(std::memory_order_relaxed);
+        _thread.join();
     }
 }
