@@ -22,6 +22,7 @@ struct PhysicalDeviceInformation {
     uint32_t graphics_queue, compute_queue, transfer_queue;
 
     bool graphics_queue_supports_presentation;
+    bool has_maintenance_5;
     bool has_memory_priority;
     bool has_pageable_device_local_memory;
     bool has_synchronization_2;
@@ -134,6 +135,7 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
 
         bool has_ext_memory_priority = false;
         bool has_ext_pageable_device_local_memory = false;
+        bool has_khr_maintenance_5 = false;
         bool has_khr_swapchain = false;
         for (uint32_t j = 0; j < num_device_extensions; ++j) {
             const auto extension_name = device_extension_properties[j].extensionName;
@@ -141,9 +143,11 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
                 has_ext_memory_priority = true;
             } else if (!strcmp(extension_name, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME)) {
                 has_ext_pageable_device_local_memory = true;
+            } else if (!strcmp(extension_name, VK_KHR_MAINTENANCE_5_EXTENSION_NAME)) {
+                has_khr_maintenance_5 = true;
             } else if (!strcmp(extension_name, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
                 has_khr_swapchain = true;
-            }
+            } 
         }
 
         if (has_khr_swapchain && device_info.graphics_queue != UINT32_MAX) {
@@ -168,6 +172,12 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
             pagable_device_local_memory_features.pNext = std::exchange(optional_pnext_chain, &pagable_device_local_memory_features);
         }
 
+        VkPhysicalDeviceMaintenance5FeaturesKHR maintenance_5_features {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR,
+        };
+        if (has_khr_maintenance_5) {
+            maintenance_5_features.pNext = std::exchange(optional_pnext_chain, &maintenance_5_features);
+        }
         VkPhysicalDeviceVulkan13Features vulkan_1_3_features {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = optional_pnext_chain  
@@ -181,6 +191,7 @@ static std::vector<PhysicalDeviceInformation> get_physical_device_info(VkInstanc
         device_info.has_memory_priority = memory_priority_features.memoryPriority;
         device_info.has_pageable_device_local_memory = pagable_device_local_memory_features.pageableDeviceLocalMemory;
         device_info.has_synchronization_2 = vulkan_1_3_features.synchronization2;
+        device_info.has_maintenance_5 = maintenance_5_features.maintenance5;
     }
 
     return ret;
@@ -193,16 +204,16 @@ static PhysicalDeviceInformation select_physical_device(
         bool is_valid = true;
 
         if (device_info.vulkan_version < VK_API_VERSION_1_3) {
-            puts("VK_API_VERSION");
             is_valid = false;
         }
         if (!device_info.has_synchronization_2) {
-            puts("syncronization_2");
             is_valid = false;
         }
         if (!device_info.graphics_queue_supports_presentation) {
-            puts("present");
             is_valid = false;
+        }
+        if (!device_info.has_maintenance_5) {
+                is_valid = false;
         }
 
         if (is_valid) {
@@ -265,7 +276,8 @@ Renderer::Renderer(Window& window)
     _queue_family_index = physical_device_info.graphics_queue;
 
     std::vector device_extensions{
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
     void *optional_pnext_chain = nullptr;
 
@@ -285,9 +297,14 @@ Renderer::Renderer(Window& window)
         desired_memory_priority_features.memoryPriority = true;
         desired_memory_priority_features.pNext = std::exchange(optional_pnext_chain, &desired_memory_priority_features);
     }
-    const VkPhysicalDeviceVulkan13Features desired_vulkan_1_3_features {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+    VkPhysicalDeviceMaintenance5FeaturesKHR desired_maintenance_5_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR,
         .pNext = optional_pnext_chain,
+        .maintenance5 = true
+    };
+    VkPhysicalDeviceVulkan13Features desired_vulkan_1_3_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .pNext = &desired_maintenance_5_features,
         .synchronization2 = true
     };
     const float queue_priority = 1.0f;
