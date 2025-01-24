@@ -197,10 +197,10 @@ Pointer::Pointer(Seat& seat)
         .frame = [](void *data, wl_pointer *) noexcept {
             auto& self = *static_cast<Pointer *>(data);
 
-            if (self._focus) {
+            if (self._focus && !self._events.empty()) {
                 self._focus->pointer_events(self._events);
-                self._events.clear();
             }
+            self._events.clear();
         },
         // The version of wl_seat (7) used will return these 3 events
         // Handling them is left as an exercise for the reader, but note that
