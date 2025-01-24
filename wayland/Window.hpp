@@ -1,5 +1,8 @@
 #pragma once
 
+#include "events/KeyboardEvents.hpp"
+#include "events/PointerEvents.hpp"
+#include "events/TouchEvents.hpp"
 #include "WaylandPointer.hpp"
 
 #include <optional>
@@ -18,23 +21,21 @@ public:
     Window& operator=(const Window&) = delete;
     Window& operator=(Window&&) noexcept = delete;
 
-    void keysym_event(uint32_t keysym, bool shift, bool ctrl, bool alt) noexcept;
-    void pointer_events(const std::vector<std::unique_ptr<EventBase>>& events) const noexcept;
-    void text_event(std::string_view str) const noexcept;
-    void touch_events(int id, const std::vector<std::unique_ptr<EventBase>>& events) const noexcept;
+    virtual void keyboard_events(const std::vector<std::unique_ptr<KeyboardEventBase>>& events) noexcept = 0;
+    virtual void pointer_events(const std::vector<std::unique_ptr<PointerEventBase>>& events) noexcept = 0;
+    virtual void touch_events(int id, const std::vector<std::unique_ptr<TouchEventBase>>& events) noexcept = 0;
 
+    bool should_close() const noexcept;
+
+    wl_display *display() noexcept;
+    wl_surface *surface() noexcept;
+
+private:
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
     uint32_t buffer_scale() const noexcept;
     std::pair<uint32_t, uint32_t> buffer_size() const noexcept;
     std::pair<uint32_t, uint32_t> surface_size() const noexcept;
 
-    wl_display *display() noexcept;
-
-    bool should_close() const noexcept;
-
-    wl_surface *surface() noexcept;
-
-public:
     static constexpr uint32_t DEFAULT_SCALE_DPI = 120;
 
 private:

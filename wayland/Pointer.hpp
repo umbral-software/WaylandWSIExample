@@ -1,5 +1,6 @@
 #pragma once
 
+#include "events/PointerEvents.hpp"
 #include "WaylandPointer.hpp"
 
 #include <vector>
@@ -26,5 +27,5 @@ private:
 
     WaylandPointer<wl_pointer> _pointer;
     std::unique_ptr<CursorBase> _cursor;
-    std::vector<std::unique_ptr<EventBase>> _events;
+    std::vector<std::unique_ptr<PointerEventBase>> _events;
 };

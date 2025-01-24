@@ -185,41 +185,6 @@ Window::Window(Display& display)
     wl_display_roundtrip(_display._display.get());
 }
 
-void Window::keysym_event(uint32_t keysym, bool, bool, bool alt) noexcept {
-    switch (keysym) {
-    case XKB_KEY_Return:
-        if (alt) {
-            toggle_fullscreen();
-        } else {
-            std::putchar('\n');
-        }
-        break;
-    case XKB_KEY_Escape:
-        _closed = true;
-        break;
-    default:
-        break;
-    }
-}
-
-void Window::pointer_events(const std::vector<std::unique_ptr<EventBase>>& events) const noexcept {
-    puts("Pointer");
-    for (const auto& event : events) {
-        printf("\t%s\n", event->to_string().c_str());
-    }
-}
-
-void Window::text_event(std::string_view str) const noexcept {
-    fwrite(str.data(), 1, str.size(), stdout);
-}
-
-void Window::touch_events(int id, const std::vector<std::unique_ptr<EventBase>>& events) const noexcept {
-    printf("Touchpoint %d\n", id);
-    for (const auto& event : events) {
-        printf("\t%s\n", event->to_string().c_str());
-    }
-}
-
 wl_display *Window::display() noexcept {
     return _display._display.get();
 }

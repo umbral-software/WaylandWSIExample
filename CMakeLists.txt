@@ -4,7 +4,7 @@ project(WaylandExample)
 include(FetchContent)
 FetchContent_Declare(imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.91.5)
+    GIT_TAG v1.91.7)
 
 find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
@@ -47,12 +47,13 @@ function(add_shader_target target)
     add_custom_target(${target} DEPENDS ${all_binaries})
 endfunction()
 
-add_executable(wayland_example main.cpp MappedFd.cpp vk_mem_alloc.cpp volk.c
+add_executable(wayland_example main.cpp MainWindow.cpp MappedFd.cpp vk_mem_alloc.cpp volk.c
     vulkan/Common.cpp vulkan/Renderer.cpp vulkan/RendererBase.cpp vulkan/Swapchain.cpp vulkan/SwapchainBase.cpp
     wayland/Display.cpp wayland/Keyboard.cpp wayland/Pointer.cpp wayland/Seat.cpp wayland/Touch.cpp wayland/TouchPoint.cpp wayland/Window.cpp
     wayland/cursor/CursorBase.cpp wayland/cursor/CursorManagerBase.cpp
     wayland/cursor/shape/ShapeCursor.cpp wayland/cursor/shape/ShapeCursorManager.cpp
     wayland/cursor/theme/ThemeCursor.cpp wayland/cursor/theme/ThemeCursorManager.cpp
+    wayland/events/KeyboardEvents.cpp wayland/events/PointerEvents.cpp wayland/events/TouchEvents.cpp
     ${imgui_SOURCE_DIR}/imgui.cpp ${imgui_SOURCE_DIR}/imgui_demo.cpp ${imgui_SOURCE_DIR}/imgui_draw.cpp ${imgui_SOURCE_DIR}/imgui_tables.cpp ${imgui_SOURCE_DIR}/imgui_widgets.cpp
 )
 ecm_add_wayland_client_protocol(wayland_example PROTOCOL ${WaylandProtocols_DATADIR}/stable/xdg-shell/xdg-shell.xml BASENAME xdg-shell)

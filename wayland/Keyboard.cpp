@@ -4,8 +4,9 @@
 #include "MappedFd.hpp"
 #include "Seat.hpp"
 #include "Window.hpp"
+#include "events/KeyboardEvents.hpp"
 
-#include <xkbcommon/xkbcommon-keysyms.h>
+#include <memory>
 
 static constexpr uint32_t XKB_EVDEV_OFFSET = 8;
 
@@ -49,18 +50,16 @@ Keyboard::Keyboard(Seat& seat)
             auto& self = *reinterpret_cast<Keyboard *>(data);
             const auto xkb_key = key + XKB_EVDEV_OFFSET;
             
-            if (self._focus && self._state) {
+            if (self._state && self._focus) {
+                std::vector<std::unique_ptr<KeyboardEventBase>> events;
+
+                const xkb_keysym_t *syms;
+                const auto num_syms = xkb_state_key_get_syms(self._state.get(), xkb_key, &syms);
+
                 switch (state) {
                 case WL_KEYBOARD_KEY_STATE_PRESSED: {
-                    const xkb_keysym_t *syms;
-                    const auto num_syms = xkb_state_key_get_syms(self._state.get(), xkb_key, &syms);
-
-                    const auto shift = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE);
-                    const auto ctrl = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE);
-                    const auto alt = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE);
-
                     for (auto i = 0; i < num_syms; ++i) {
-                        self._focus->keysym_event(syms[i], shift, ctrl, alt);
+                        events.emplace_back(std::make_unique<KeysymKeyboardEvent>(syms[i], true));
                     }
 
                     const size_t chars = static_cast<size_t>(1 + xkb_state_key_get_utf8(self._state.get(), xkb_key, nullptr, 0));
@@ -68,13 +67,20 @@ Keyboard::Keyboard(Seat& seat)
                         const auto buf = std::make_unique_for_overwrite<char[]>(chars);
                         xkb_state_key_get_utf8(self._state.get(), xkb_key, buf.get(), chars);
 
-                        self._focus->text_event(std::string_view(buf.get(), chars));
+                        events.emplace_back(std::make_unique<TextKeyboardEvent>(buf.get(), chars));
                     }
                     break;
                 }
                 case WL_KEYBOARD_KEY_STATE_RELEASED:
+                    for (auto i = 0; i < num_syms; ++i) {
+                        events.emplace_back(std::make_unique<KeysymKeyboardEvent>(syms[i], false));
+                    }
                 default:
                     break;
+                }
+
+                if (self._focus) {
+                    self._focus->keyboard_events(events);
                 }
             }
         },
@@ -83,6 +89,15 @@ Keyboard::Keyboard(Seat& seat)
 
             if (self._state) {
                 xkb_state_update_mask(self._state.get(), mods_depressed, mods_latched, mods_locked, 0, 0, group);
+                if (self._focus) {
+                    const auto shift = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE);
+                    const auto ctrl = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE);
+                    const auto alt = xkb_state_mod_name_is_active(self._state.get(), XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE);
+
+                    std::vector<std::unique_ptr<KeyboardEventBase>> events;
+                    events.emplace_back(std::make_unique<ModifiersKeyboardEvent>(shift, ctrl, alt));
+                    self._focus->keyboard_events(events);
+                }
             }
         },
         .repeat_info = [](void *, wl_keyboard *, int32_t, int32_t) noexcept {
