@@ -32,7 +32,7 @@ static constexpr uint32_t MINIMUM_XDG_DECORATION_V1_VERSION = 1;
 static constexpr uint32_t DESIRED_XDG_DECORATION_V1_VERSION = 1;
 
 static constexpr uint32_t MINIMUM_XDG_SHELL_VERSION = 2;
-static constexpr uint32_t DESIRED_XDG_SHELL_VERSION = 2;
+static constexpr uint32_t DESIRED_XDG_SHELL_VERSION = 4;
 
 static short poll_single(int fd, short events, int timeout) {
     pollfd pfd { .fd = fd, .events = events, .revents = 0 };
