@@ -18,10 +18,7 @@ public:
 
 class KeysymKeyboardEvent final : public KeyboardEventBase {
 public:
-    KeysymKeyboardEvent(xkb_keysym_t keysym, bool down)
-        :_keysym(keysym)
-        ,_down(down)
-    {}
+    KeysymKeyboardEvent(xkb_keysym_t keysym, bool down);
     KeysymKeyboardEvent(const KeysymKeyboardEvent&) = default;
     KeysymKeyboardEvent(KeysymKeyboardEvent&&) noexcept = default;
     ~KeysymKeyboardEvent() final = default;
@@ -29,7 +26,9 @@ public:
     KeysymKeyboardEvent& operator=(const KeysymKeyboardEvent&) = default;
     KeysymKeyboardEvent& operator=(KeysymKeyboardEvent&&) = default;
 
+    xkb_keysym_t keysym() const noexcept;
     KeyboardEventType type() const noexcept final;
+    bool is_down() const noexcept;
 
 private:
     xkb_keysym_t _keysym;
@@ -38,9 +37,7 @@ private:
 
 class TextKeyboardEvent final : public KeyboardEventBase {
 public:
-    TextKeyboardEvent(const char *buf, size_t size)
-        :_text(buf, size)
-    {}
+    TextKeyboardEvent(const char *buf, size_t size);
     TextKeyboardEvent(const TextKeyboardEvent&) = default;
     TextKeyboardEvent(TextKeyboardEvent&&) noexcept = default;
     ~TextKeyboardEvent() final = default;
@@ -48,6 +45,7 @@ public:
     TextKeyboardEvent& operator=(const TextKeyboardEvent&) = default;
     TextKeyboardEvent& operator=(TextKeyboardEvent&&) = default;
 
+    const char *text() const noexcept;
     KeyboardEventType type() const noexcept final;
 
 private:
@@ -56,11 +54,7 @@ private:
 
 class ModifiersKeyboardEvent final : public KeyboardEventBase {
 public:
-    ModifiersKeyboardEvent(bool ctrl, bool shift, bool alt)
-        :_ctrl(ctrl)
-        ,_shift(shift)
-        ,_alt(alt)
-    {}
+    ModifiersKeyboardEvent(bool shift, bool ctrl, bool alt);
     ModifiersKeyboardEvent(const ModifiersKeyboardEvent&) = default;
     ModifiersKeyboardEvent(ModifiersKeyboardEvent&&) noexcept = default;
     ~ModifiersKeyboardEvent() final = default;
@@ -68,8 +62,11 @@ public:
     ModifiersKeyboardEvent& operator=(const ModifiersKeyboardEvent&) = default;
     ModifiersKeyboardEvent& operator=(ModifiersKeyboardEvent&&) = default;
 
+    bool ctrl() const noexcept;
+    bool shift() const noexcept;
+    bool alt() const noexcept;
     KeyboardEventType type() const noexcept final;
 
 private:
-    bool _ctrl, _shift, _alt;
+    bool _shift, _ctrl, _alt;
 };

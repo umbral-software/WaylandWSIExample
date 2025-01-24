@@ -65,6 +65,8 @@ Window::Window(Display& display)
             } else {
                 wl_surface_set_buffer_scale(self._surface.get(), 1);
             }
+
+            self.reconfigure();
         }
     };
 
@@ -92,7 +94,7 @@ Window::Window(Display& display)
         .close = [](void *data, xdg_toplevel *) noexcept {
             auto& self = *static_cast<Window*>(data);
 
-            self._closed = true;
+            self.set_should_close() ;
         },
         .configure_bounds = [](void *data, xdg_toplevel *, int32_t width, int32_t height) noexcept {
             auto& self = *static_cast<Window*>(data);
@@ -163,7 +165,7 @@ Window::Window(Display& display)
 
     _closed = false;
     _fullscreen = false;
-    _maximized = false;
+    _maximized = false;double
     _has_server_decorations = !!_display._decoration_manager;
 
     _actual_integer_scale = 0;
@@ -182,7 +184,6 @@ Window::Window(Display& display)
     }
 
     wl_surface_commit(_surface.get());
-    wl_display_roundtrip(_display._display.get());
 }
 
 wl_display *Window::display() noexcept {
@@ -214,6 +215,10 @@ std::pair<uint32_t, uint32_t> Window::surface_size() const noexcept {
         );
     }
     return size;
+}
+
+void Window::set_should_close() noexcept {
+    _closed = true;
 }
 
 bool Window::should_close() const noexcept {

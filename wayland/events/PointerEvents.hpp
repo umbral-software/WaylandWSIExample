@@ -20,10 +20,7 @@ public:
 
 class EnterPointerEvent final : public PointerEventBase {
 public:
-    EnterPointerEvent(uint32_t serial, int x, int y)
-        :_serial(serial)
-        ,_pos(x, y)
-    {}
+    EnterPointerEvent(uint32_t serial, int x, int y);
     EnterPointerEvent(const EnterPointerEvent&) = default;
     EnterPointerEvent(EnterPointerEvent&&) noexcept = default;
     ~EnterPointerEvent() final = default;
@@ -40,9 +37,7 @@ private:
 
 class LeavePointerEvent final : public PointerEventBase {
 public:
-    LeavePointerEvent(uint32_t serial)
-        :_serial(serial)
-    {}
+    LeavePointerEvent(uint32_t serial);
     LeavePointerEvent(const LeavePointerEvent&) = default;
     LeavePointerEvent(LeavePointerEvent&&) noexcept = default;
     ~LeavePointerEvent() final = default;
@@ -58,10 +53,7 @@ private:
 
 class MotionPointerEvent final : public PointerEventBase {
 public:
-    MotionPointerEvent(uint32_t serial, int x, int y)
-        :_serial(serial)
-        ,_pos(x, y)
-    {}
+    MotionPointerEvent(uint32_t serial, int x, int y);
     MotionPointerEvent(const MotionPointerEvent&) = default;
     MotionPointerEvent(MotionPointerEvent&&) noexcept = default;
     ~MotionPointerEvent() final = default;
@@ -69,6 +61,7 @@ public:
     MotionPointerEvent& operator=(const MotionPointerEvent&) = default;
     MotionPointerEvent& operator=(MotionPointerEvent&&) = default;
 
+    const std::pair<int, int>& position() const noexcept;
     PointerEventType type() const noexcept final;
 
 private:
@@ -78,12 +71,7 @@ private:
 
 class ButtonPointerEvent final : public PointerEventBase {
 public:
-    ButtonPointerEvent(uint32_t serial, uint32_t time, uint32_t button, bool pressed)
-        :_serial(serial)
-        ,_time(time)
-        ,_button(button)
-        ,_pressed(pressed)
-    {}
+    ButtonPointerEvent(uint32_t serial, uint32_t time, uint32_t button, bool down);
     ButtonPointerEvent(const ButtonPointerEvent&) = default;
     ButtonPointerEvent(ButtonPointerEvent&&) noexcept = default;
     ~ButtonPointerEvent() final = default;
@@ -91,22 +79,20 @@ public:
     ButtonPointerEvent& operator=(const ButtonPointerEvent&) = default;
     ButtonPointerEvent& operator=(ButtonPointerEvent&&) = default;
 
+    uint32_t button_index() const noexcept;
+    bool is_down() const noexcept;
     PointerEventType type() const noexcept final;
 
 private:
     uint32_t _serial;
     uint32_t _time;
     uint32_t _button;
-    bool _pressed;
+    bool _down;
 };
 
 class AxisPointerEvent final : public PointerEventBase {
 public:
-    AxisPointerEvent(uint32_t time, int32_t value, bool horizontal)
-        :_time(time)
-        ,_value(value)
-        ,_horizontal(horizontal)
-    {}
+    AxisPointerEvent(uint32_t time, int32_t value, bool horizontal);
     AxisPointerEvent(const AxisPointerEvent&) = default;
     AxisPointerEvent(AxisPointerEvent&&) noexcept = default;
     ~AxisPointerEvent() final = default;
@@ -114,7 +100,10 @@ public:
     AxisPointerEvent& operator=(const AxisPointerEvent&) = default;
     AxisPointerEvent& operator=(AxisPointerEvent&&) = default;
 
+    bool is_horizontal() const noexcept;
+    bool is_vertical() const noexcept;
     PointerEventType type() const noexcept final;
+    int32_t value() const noexcept;
 
 private:
     uint32_t _time;

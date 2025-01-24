@@ -21,6 +21,8 @@ public:
     Window& operator=(const Window&) = delete;
     Window& operator=(Window&&) noexcept = delete;
 
+    virtual void reconfigure() noexcept = 0;
+
     virtual void keyboard_events(const std::vector<std::unique_ptr<KeyboardEventBase>>& events) noexcept = 0;
     virtual void pointer_events(const std::vector<std::unique_ptr<PointerEventBase>>& events) noexcept = 0;
     virtual void touch_events(int id, const std::vector<std::unique_ptr<TouchEventBase>>& events) noexcept = 0;
@@ -30,16 +32,16 @@ public:
     wl_display *display() noexcept;
     wl_surface *surface() noexcept;
 
-private:
+protected:
     // Numerator of a fraction with DEFAULT_SCALE_DPI as the denominator
     uint32_t buffer_scale() const noexcept;
     std::pair<uint32_t, uint32_t> buffer_size() const noexcept;
     std::pair<uint32_t, uint32_t> surface_size() const noexcept;
 
-    static constexpr uint32_t DEFAULT_SCALE_DPI = 120;
-
-private:
+    void set_should_close() noexcept;
     void toggle_fullscreen() noexcept;
+
+    static constexpr uint32_t DEFAULT_SCALE_DPI = 120;
 
 private:
     Display& _display;

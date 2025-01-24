@@ -7,6 +7,8 @@ class MainWindow final: public Window {
 public:
     explicit MainWindow(Display& display);
 
+    void reconfigure() noexcept final;
+
     void keyboard_events(const std::vector<std::unique_ptr<KeyboardEventBase>>& events) noexcept final;
     void pointer_events(const std::vector<std::unique_ptr<PointerEventBase>>& events) noexcept final;
     void touch_events(int id, const std::vector<std::unique_ptr<TouchEventBase>>& events) noexcept final;
@@ -15,4 +17,5 @@ public:
 
 private:
     Renderer _renderer;
+    bool _alt, _ctrl;
 };
