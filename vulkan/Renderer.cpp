@@ -266,6 +266,8 @@ Renderer::Renderer(Window& window)
 
     const VkApplicationInfo application_info {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pApplicationName = "WaylandWSIExample",
+        .applicationVersion = 0,
         .apiVersion = VK_API_VERSION_1_3
     };
     const VkInstanceCreateInfo instance_create_info {
