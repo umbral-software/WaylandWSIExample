@@ -25,7 +25,7 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install --no-install-recommends extra-cmake-modules glslc libglm-dev libwayland-dev libvulkan-dev libxkbcommon-dev vma volk vulkan-headers vulkan-utility-libraries-dev wayland-protocols
+        sudo apt-get install --no-install-recommends extra-cmake-modules glslc libglm-dev libvulkan-dev libvulkan-memory-allocator-dev libvulkan-volk-dev libwayland-dev libxkbcommon-dev vulkan-utility-libraries-dev wayland-protocols
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
