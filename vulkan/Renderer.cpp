@@ -340,7 +340,10 @@ Renderer::Renderer(Window& window)
     check_success(vkCreateDevice(_physical_device, &device_create_info, nullptr, &d.device));
     volkLoadDevice(d.device);
 
-    VmaAllocatorCreateFlags allocator_flags = VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
+    VmaAllocatorCreateFlags allocator_flags = 0;
+#ifdef VMA_KHR_MAINTENANCE5
+    allocator_flags |= VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT;
+#endif
     if (physical_device_info.has_memory_priority) {
         allocator_flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
     }
