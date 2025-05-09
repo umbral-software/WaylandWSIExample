@@ -13,13 +13,13 @@ pkg_check_modules(XKB REQUIRED IMPORTED_TARGET xkbcommon)
 
 set(GLSLC_ARGS "--target-env=vulkan1.3" CACHE STRING "Additional arguments for glslc")
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     list(APPEND GLSLC_ARGS "-g")
-elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
     list(APPEND GLSLC_ARGS "-O")
-elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
     list(APPEND GLSLC_ARGS "-O" "-g")
-elseif(${CMAKE_BUILD_TYPE} STREQUAL "MinSizeRel")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
     list(APPEND GLSLC_ARGS "-Os")
 endif()
 
