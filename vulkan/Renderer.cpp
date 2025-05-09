@@ -656,7 +656,7 @@ Renderer::Renderer(Window& window)
 
 Renderer::~Renderer() {
     if (d.device) {
-        wait_all_fences();
+        vkQueueWaitIdle(_queue); // This can be reduced with EXT_swapchain_maintenance1
         _swapchain.destroy(true);
     }
 }
@@ -667,7 +667,7 @@ FrameData& Renderer::frame() noexcept {
 
 void Renderer::render() {
     if (_swapchain.rebuild_required() || _window.buffer_size() != _swapchain.size()) {
-        check_success(wait_all_fences()); // Can this be reduced?
+        vkQueueWaitIdle(_queue); // This can be reduced with EXT_swapchain_maintenance1
         _swapchain.rebuild(_window.buffer_size(), d.render_pass);
     }
 
