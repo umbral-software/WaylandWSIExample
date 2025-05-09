@@ -35,11 +35,3 @@ RendererBase::~RendererBase() {
         volkFinalize();
     }
 }
-
-VkResult RendererBase::wait_all_fences() const noexcept {
-    std::array<VkFence, NUM_FRAMES_IN_FLIGHT> all_fences;
-    for (size_t i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i) {
-        all_fences[i] = d.frame_data[i].fence;
-    }
-    return vkWaitForFences(d.device, all_fences.size(), all_fences.data(), true, UINT64_MAX);
-}

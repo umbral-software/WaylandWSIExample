@@ -24,8 +24,6 @@ protected:
     RendererBase& operator=(const RendererBase&) = delete;
     RendererBase& operator=(RendererBase&&) noexcept = delete;
 
-    VkResult wait_all_fences() const noexcept;
-
     struct {
         VkInstance instance;
         VkSurfaceKHR surface;
