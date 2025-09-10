@@ -1,4 +1,7 @@
 #include "ThemeCursor.hpp"
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 
 ThemeCursor::ThemeCursor(wl_cursor *cursor, wl_pointer *pointer, wl_surface *surface)
     :_cursor(cursor)
@@ -7,10 +10,7 @@ ThemeCursor::ThemeCursor(wl_cursor *cursor, wl_pointer *pointer, wl_surface *sur
 {}
 
 ThemeCursor::~ThemeCursor() {
-    if (_thread.joinable()) {
-        _thread_status.test_and_set(std::memory_order_relaxed);
-        _thread.join();
-    }
+    kill_thread();
 }
 
 void ThemeCursor::set_pointer(uint32_t serial) {
@@ -23,16 +23,13 @@ void ThemeCursor::set_pointer(uint32_t serial) {
     );
 
     if (_cursor->image_count > 1) {
-        _thread_status.clear(std::memory_order_relaxed);
+        _thread_is_cancelled = false;
         _thread = std::thread(&ThemeCursor::thread_entry, this);
     }
 }
 
 void ThemeCursor::unset_pointer(uint32_t) {
-    if (_thread.joinable()) {
-        _thread_status.test_and_set(std::memory_order_relaxed);
-        _thread.join();
-    }
+    kill_thread();
 }
 
 void ThemeCursor::attach_buffer(wl_cursor_image *old_image, wl_cursor_image *image) {
@@ -60,11 +57,29 @@ void ThemeCursor::attach_buffer(wl_cursor_image *old_image, wl_cursor_image *ima
     wl_surface_commit(_surface.get());
 }
 
+void ThemeCursor::kill_thread() {
+    if (_thread.joinable()) {
+        {
+            const auto lock = std::unique_lock{ _mutex };
+            _thread_is_cancelled = true;
+            _cv.notify_all();
+        }
+        _thread.join();
+    }
+}
+
 void ThemeCursor::thread_entry() noexcept {
     uint32_t image_index = 0;
-    while (!_thread_status.test(std::memory_order_relaxed)) {
+    auto lock = std::unique_lock{_mutex };
+    while (true) {
         const auto old_image = _cursor->images[image_index];
-        std::this_thread::sleep_for(std::chrono::milliseconds(old_image->delay));
+
+        if (_cv.wait_for(lock, std::chrono::milliseconds(old_image->delay), [this](){
+            return _thread_is_cancelled;
+        })) {
+            // Thread is cancelled!
+            return;
+        }
 
         image_index = (image_index + 1) % _cursor->image_count;
         auto *image = _cursor->images[image_index];

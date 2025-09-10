@@ -4,6 +4,7 @@
 
 #include "wayland/WaylandPointer.hpp"
 
+#include <condition_variable>
 #include <thread>
 
 class ThemeCursor final : public CursorBase {
@@ -22,12 +23,15 @@ public:
 private:
     void attach_buffer(wl_cursor_image *old_image, wl_cursor_image *image);
     void thread_entry() noexcept;
+    void kill_thread();
 
 private:
     wl_cursor *_cursor;
     wl_pointer *_pointer;
     WaylandPointer<wl_surface> _surface;
 
-    std::atomic_flag _thread_status;
+    bool _thread_is_cancelled;
+    std::mutex _mutex;
+    std::condition_variable _cv;
     std::thread _thread;
 };
