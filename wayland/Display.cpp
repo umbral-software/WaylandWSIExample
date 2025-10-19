@@ -69,7 +69,7 @@ Display::Display() {
                     wl_registry, name, version,
                     &wl_seat_interface,
                     DESIRED_WL_SEAT_VERSION
-                ));
+                ), name);
             }
             else if (!strcmp(wl_shm_interface.name, interface)
                 && version >= MINIMUM_WL_SHM_VERSION)
@@ -143,8 +143,11 @@ Display::Display() {
                 ));
             }
         },
-        .global_remove = [](void *, wl_registry *, uint32_t) noexcept {
-            
+        .global_remove = [](void *data, wl_registry *, uint32_t name) noexcept {
+            auto& self = *static_cast<Display*>(data);
+            self._seats.remove_if([name](Seat& seat){
+                return seat.name() == name;
+            });
         }
     };
 
