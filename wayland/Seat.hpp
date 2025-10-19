@@ -21,7 +21,7 @@ public:
     Seat& operator=(const Seat&) = delete;
     Seat& operator=(Seat&&) noexcept = delete;
 
-    uint32_t name() const noexcept;
+    uint32_t global_name() const noexcept;
 
 private:
     Display& _display;
