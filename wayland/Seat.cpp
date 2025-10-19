@@ -2,8 +2,8 @@
 
 #include "cursor/CursorBase.hpp"
 
-Seat::Seat(Display& display, wl_seat *seat)
-    :_display(display), _seat(seat)
+Seat::Seat(Display& display, wl_seat *seat, uint32_t global_name)
+    :_display(display), _seat(seat), _name(global_name)
 {
     static constexpr wl_seat_listener seat_listener {
         .capabilities = [](void *data, wl_seat *, uint32_t capabilities) noexcept {
@@ -39,4 +39,8 @@ Seat::Seat(Display& display, wl_seat *seat)
     };
 
     wl_seat_add_listener(_seat.get(), &seat_listener, this);
+}
+
+uint32_t Seat::name() const noexcept {
+    return _name;
 }
