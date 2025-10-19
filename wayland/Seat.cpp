@@ -41,6 +41,6 @@ Seat::Seat(Display& display, wl_seat *seat, uint32_t global_name)
     wl_seat_add_listener(_seat.get(), &seat_listener, this);
 }
 
-uint32_t Seat::name() const noexcept {
+uint32_t Seat::global_name() const noexcept {
     return _name;
 }

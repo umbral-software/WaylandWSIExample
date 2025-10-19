@@ -146,7 +146,7 @@ Display::Display() {
         .global_remove = [](void *data, wl_registry *, uint32_t name) noexcept {
             auto& self = *static_cast<Display*>(data);
             self._seats.remove_if([name](Seat& seat){
-                return seat.name() == name;
+                return seat.global_name() == name;
             });
         }
     };
