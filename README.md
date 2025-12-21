@@ -13,6 +13,7 @@ Where supported, it also will suppport server-side decorations (failing back to 
 
 Full list of protocols supported:
 * [Core protocol](https://wayland.app/protocols/wayland)
+  * [wl_fixes](https://wayland.app/protocols/wayland#wl_fixes) (optional)
 * [XDG shell](https://wayland.app/protocols/xdg-shell) (required)
 * [Content type hint](https://wayland.app/protocols/content-type-v1) (optional)
 * [Cursor Shape](https://wayland.app/protocols/cursor-shape-v1) (optional)

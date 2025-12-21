@@ -3,6 +3,7 @@
 #include "cursor/CursorManagerBase.hpp"
 #include "Seat.hpp"
 #include "XkbPointer.hpp"
+#include "wayland/WaylandPointer.hpp"
 
 #include <forward_list>
 
@@ -16,7 +17,7 @@ public:
     Display();
     Display(const Display&) = delete;
     Display(Display&&) noexcept = delete;
-    ~Display() = default;
+    ~Display();
 
     Display& operator=(const Display&) = delete;
     Display& operator=(Display&&) noexcept = delete;
@@ -34,6 +35,7 @@ private:
     std::forward_list<Seat> _seats;
 
     // Optional protocols
+    WaylandPointer<wl_fixes> _fixes;
     WaylandPointer<wl_shm> _shm; // Only needed for wl-cursor theme cursors
     WaylandPointer<wp_content_type_manager_v1> _content_type_manager;
     WaylandPointer<wp_fractional_scale_manager_v1> _fractional_scale_manager;
