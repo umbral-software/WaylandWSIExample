@@ -10,6 +10,9 @@
 static constexpr uint32_t MINIMUM_WL_COMPOSITOR_VERSION = 4;
 static constexpr uint32_t DESIRED_WL_COMPOSITOR_VERSION = 6;
 
+static constexpr uint32_t MINIMUM_WL_FIXES_VERSION = 1;
+static constexpr uint32_t DESIRED_WL_FIXES_VERSION = 1;
+
 static constexpr uint32_t MINIMUM_WL_SEAT_VERSION = 7;
 static constexpr uint32_t DESIRED_WL_SEAT_VERSION = 7;
 
@@ -60,6 +63,15 @@ Display::Display() {
                     wl_registry, name, version,
                     &wl_compositor_interface,
                     DESIRED_WL_COMPOSITOR_VERSION
+                ));
+            }
+            else if (!strcmp(wl_fixes_interface.name, interface)
+                && version >= MINIMUM_WL_FIXES_VERSION)
+            {
+                self._fixes.reset(do_bind<wl_fixes>(
+                    wl_registry, name, version,
+                    &wl_fixes_interface,
+                    DESIRED_WL_FIXES_VERSION
                 ));
             }
             else if (!strcmp(wl_seat_interface.name, interface)
@@ -179,6 +191,10 @@ Display::Display() {
     _xkb_context.reset(xkb_context_new(XKB_CONTEXT_NO_FLAGS));
 
     _has_fractional_scale = _fractional_scale_manager && _viewporter;
+}
+
+Display::~Display() {
+    if (_fixes) wl_fixes_destroy_registry(_fixes.get(), _registry.get());
 }
 
 void Display::poll_events() {

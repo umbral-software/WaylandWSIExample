@@ -28,6 +28,10 @@ struct WaylandDeleter {
         wl_display_disconnect(display);
     }
 
+    void operator()(wl_fixes *fixes) const noexcept {
+        wl_fixes_destroy(fixes);
+    }
+
     void operator()(wl_keyboard *wl_keyboard) const noexcept {
         wl_keyboard_release(wl_keyboard);
     }
